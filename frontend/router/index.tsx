@@ -52,6 +52,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <MentorDashboardPage /> },
       { path: ':userId', element: <MentorEmployeePage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'directory', element: <DirectoryPage /> },
     ],
   },
 

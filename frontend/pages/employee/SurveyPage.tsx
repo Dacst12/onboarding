@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, Rate, Radio, Input, Button, Typography, Result } from 'antd'
+import { Card, Radio, Input, Button, Typography, Result } from 'antd'
 import { CheckCircleOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -11,13 +11,13 @@ interface SurveyForm {
   comment?: string
 }
 
-const moodLabels: Record<number, { label: string; color: string }> = {
-  1: { label: 'Очень плохо', color: '#ff4d4f' },
-  2: { label: 'Плохо', color: '#ff7a45' },
-  3: { label: 'Нормально', color: '#faad14' },
-  4: { label: 'Хорошо', color: '#52c41a' },
-  5: { label: 'Отлично', color: '#13c2c2' },
-}
+const moods = [
+  { value: 1, emoji: '☹️', label: 'Очень плохо', color: '#ff4d4f' },
+  { value: 2, emoji: '🙁', label: 'Плохо', color: '#ff7a45' },
+  { value: 3, emoji: '😐', label: 'Нормально', color: '#faad14' },
+  { value: 4, emoji: '🙂', label: 'Хорошо', color: '#52c41a' },
+  { value: 5, emoji: '😄', label: 'Отлично', color: '#13c2c2' },
+]
 
 const SurveyPage = () => {
   const [form, setForm] = useState<SurveyForm>({
@@ -50,7 +50,7 @@ const SurveyPage = () => {
           }
           subTitle={
             <Text style={{ fontSize: 15, color: '#999' }}>
-              Твой фидбек за неделю 2 принят
+              Твой фидбек за неделю 2 принят — HR уже в курсе
             </Text>
           }
         />
@@ -105,30 +105,40 @@ const SurveyPage = () => {
           >
             Оцени общее самочувствие и рабочий настрой
           </Text>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: 10,
-            }}
-          >
-            <Rate
-              value={form.mood}
-              onChange={(val) => update('mood', val)}
-              style={{ fontSize: 32 }}
-            />
-            {form.mood > 0 && (
-              <Text
+          <div style={{ display: 'flex', gap: 12 }}>
+            {moods.map((mood) => (
+              <div
+                key={mood.value}
+                onClick={() => update('mood', mood.value)}
                 style={{
-                  fontSize: 15,
-                  color: moodLabels[form.mood].color,
-                  fontWeight: 500,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '12px 8px',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  border: `2px solid ${form.mood === mood.value ? mood.color : '#f0f0f0'}`,
+                  background:
+                    form.mood === mood.value ? `${mood.color}12` : '#fafafa',
+                  transition: 'all 0.15s',
+                  flex: 1,
                 }}
               >
-                {moodLabels[form.mood].label}
-              </Text>
-            )}
+                <span style={{ fontSize: 28 }}>{mood.emoji}</span>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: form.mood === mood.value ? mood.color : '#bbb',
+                    fontWeight: form.mood === mood.value ? 600 : 400,
+                    textAlign: 'center',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {mood.label}
+                </Text>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -187,7 +197,7 @@ const SurveyPage = () => {
 
         <div style={{ borderTop: '1px solid #f5f5f5' }} />
 
-        {/* Вопрос 3 — Комментарий (опционально) */}
+        {/* Вопрос 3 — Комментарий */}
         <div>
           <Text
             strong
