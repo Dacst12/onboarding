@@ -139,7 +139,7 @@ const TaskList = ({ tasks }: TaskListProps) => {
                           padding: '0 8px',
                         }}
                       >
-                        ⚠ Просрочено
+                        Просрочено
                       </Tag>
                     ) : (
                       <Tag

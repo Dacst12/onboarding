@@ -56,20 +56,7 @@ const SurveyCard = ({ filled, weekNumber, filledAt }: SurveyCardProps) => {
           <Text strong style={{ fontSize: 15, display: 'block' }}>
             {filled ? 'Опрос заполнен' : 'Опрос не заполнен'}
           </Text>
-          {filled ? (
-            <Text
-              style={{
-                fontSize: 13,
-                color: '#ff6720',
-                display: 'block',
-                marginTop: 5,
-                cursor: 'pointer',
-              }}
-              onClick={() => navigate('/survey/history')}
-            >
-              Посмотреть историю
-            </Text>
-          ) : (
+          {!filled && (
             <Tag
               style={{
                 marginTop: 6,
