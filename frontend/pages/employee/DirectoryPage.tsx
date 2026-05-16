@@ -40,6 +40,8 @@ const mockEmployees: Employee[] = [
     team: 'Core',
     email: 'maria@company.com',
     phone: '+7 999 333 44 55',
+    telegram: '@mashaK',
+    vk: 'maria_kz',
     responsibilities: 'Роадмап продукта, приоритизация, метрики',
     role: 'mentor',
     startDate: '2024-01-01',

@@ -1,5 +1,10 @@
 import { Modal, Avatar, Tag, Typography } from 'antd'
-import { MailOutlined, PhoneOutlined, TeamOutlined } from '@ant-design/icons'
+import {
+  MailOutlined,
+  PhoneOutlined,
+  TeamOutlined,
+  SendOutlined,
+} from '@ant-design/icons'
 import type { CSSProperties } from 'react'
 import type { Employee } from '../../types/user'
 import {
@@ -105,8 +110,9 @@ const EmployeeModal = ({ employee, onClose }: EmployeeModalProps) => (
           </Text>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Text style={{ fontSize: 13, color: '#bbb' }}>Контакты</Text>
+
           <div
             onClick={() => {
               window.location.href = `mailto:${employee.email}`
@@ -116,6 +122,7 @@ const EmployeeModal = ({ employee, onClose }: EmployeeModalProps) => (
             <MailOutlined />
             {employee.email}
           </div>
+
           {employee.phone && (
             <div
               onClick={() => {
@@ -125,6 +132,35 @@ const EmployeeModal = ({ employee, onClose }: EmployeeModalProps) => (
             >
               <PhoneOutlined />
               {employee.phone}
+            </div>
+          )}
+
+          {employee.telegram && (
+            <div
+              onClick={() => {
+                window.open(
+                  `https://t.me/${employee.telegram!.replace('@', '')}`,
+                  '_blank'
+                )
+              }}
+              style={modalLinkStyle}
+            >
+              <SendOutlined />
+              {employee.telegram}
+            </div>
+          )}
+
+          {employee.vk && (
+            <div
+              onClick={() => {
+                window.open(`https://${employee.vk}`, '_blank')
+              }}
+              style={modalLinkStyle}
+            >
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#ff6720' }}>
+                VK
+              </span>
+              {employee.vk}
             </div>
           )}
         </div>

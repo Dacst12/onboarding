@@ -114,7 +114,11 @@ const RoadmapStageCard = ({ stage, onTaskClick }: RoadmapStageCardProps) => {
                     }
                   >
                     <div
-                      style={{ flexShrink: 0 }}
+                      style={{
+                        flexShrink: 0,
+                        transform: 'scale(1.3)',
+                        transformOrigin: 'center',
+                      }}
                       onClick={(e) => {
                         e.stopPropagation()
                         if (stage.status === 'locked') e.preventDefault()

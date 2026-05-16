@@ -11,7 +11,6 @@ import DashboardPage from '../pages/employee/DashboardPage'
 import RoadmapPage from '../pages/employee/RoadmapPage'
 import DirectoryPage from '../pages/employee/DirectoryPage'
 import SurveyPage from '../pages/employee/SurveyPage'
-import AchievementsPage from '../pages/employee/AchievementsPage'
 import ProfilePage from '../pages/employee/ProfilePage'
 
 import MentorDashboardPage from '../pages/mentor/MentorDashboardPage'

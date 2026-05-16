@@ -20,6 +20,8 @@ export interface Employee {
   position: string
   responsibilities: string
   phone?: string
+  telegram?: string
+  vk?: string
   startDate: string
   mentorId?: number
 }
