@@ -2,38 +2,32 @@ import { Card, Table, Tag, Progress, Avatar, Typography } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { getInitials, getDepartmentColor } from '../../utils/directory'
 import { moodColor, moodLabel } from '../mentor/types'
+import type { User } from '../../types/user'
 
 const { Text } = Typography
 
-export interface Employee {
-  id: number
-  name: string
-  email?: string
-  position: string
-  department: string
-  mentor: string
-  plan: string
-  completedTasks: number
-  totalTasks: number
-  lastMood: number | null
-  startDate: string
-  role: 'employee' | 'mentor' | 'admin'
+export interface EmployeeTableRow extends User {
+  plan?: string
+  completedTasks?: number
+  totalTasks?: number
+  lastMood?: number | null
+  startDate?: string
 }
 
 const roleLabel: Record<string, string> = {
-  employee: 'Сотрудник',
+  new_employee: 'Сотрудник',
   mentor: 'Наставник',
   admin: 'Администратор',
 }
 
 const roleColor: Record<string, string> = {
-  employee: '#1677ff',
+  new_employee: '#1677ff',
   mentor: '#ff6720',
   admin: '#722ed1',
 }
 
 interface EmployeeTableProps {
-  employees: Employee[]
+  employees: EmployeeTableRow[]
 }
 
 const EmployeeTable = ({ employees }: EmployeeTableProps) => {
@@ -43,22 +37,22 @@ const EmployeeTable = ({ employees }: EmployeeTableProps) => {
     {
       title: 'Сотрудник',
       key: 'employee',
-      render: (_: unknown, record: Employee) => (
+      render: (_: unknown, record: EmployeeTableRow) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Avatar
             size={36}
             style={{
-              background: getDepartmentColor(record.department),
+              background: getDepartmentColor(record.department || 'default'),
               fontSize: 15,
               fontWeight: 600,
               flexShrink: 0,
             }}
           >
-            {getInitials(record.name)}
+            {getInitials(record.full_name)}
           </Avatar>
           <div>
             <Text strong style={{ fontSize: 16, display: 'block' }}>
-              {record.name}
+              {record.full_name}
             </Text>
             <Text style={{ fontSize: 14, color: '#999' }}>
               {record.position}
@@ -70,24 +64,28 @@ const EmployeeTable = ({ employees }: EmployeeTableProps) => {
     {
       title: 'Отдел',
       key: 'department',
-      render: (_: unknown, record: Employee) => (
-        <Tag
-          style={{
-            background: `${getDepartmentColor(record.department)}15`,
-            border: `1px solid ${getDepartmentColor(record.department)}30`,
-            color: getDepartmentColor(record.department),
-            borderRadius: 6,
-            fontSize: 14,
-          }}
-        >
-          {record.department}
-        </Tag>
-      ),
+      render: (_: unknown, record: EmployeeTableRow) => {
+        const dept = record.department || '—'
+        const color = getDepartmentColor(dept)
+        return (
+          <Tag
+            style={{
+              background: `${color}15`,
+              border: `1px solid ${color}30`,
+              color: color,
+              borderRadius: 6,
+              fontSize: 14,
+            }}
+          >
+            {dept}
+          </Tag>
+        )
+      },
     },
     {
       title: 'Роль',
       key: 'role',
-      render: (_: unknown, record: Employee) => (
+      render: (_: unknown, record: EmployeeTableRow) => (
         <Tag
           style={{
             background: `${roleColor[record.role]}15`,
@@ -105,13 +103,16 @@ const EmployeeTable = ({ employees }: EmployeeTableProps) => {
       title: 'Наставник',
       dataIndex: 'mentor',
       key: 'mentor',
-      render: (mentor: string) => (
-        <Text
-          style={{ fontSize: 16, color: mentor === '—' ? '#bbb' : '#1a1a1a' }}
-        >
-          {mentor}
-        </Text>
-      ),
+      render: (mentor: string | { id: number; full_name: string }) => {
+        const mentorName = typeof mentor === 'string' ? mentor : (mentor?.full_name || '—')
+        return (
+          <Text
+            style={{ fontSize: 16, color: mentorName === '—' ? '#bbb' : '#1a1a1a' }}
+          >
+            {mentorName}
+          </Text>
+        )
+      },
     },
     {
       title: 'План',
@@ -136,8 +137,8 @@ const EmployeeTable = ({ employees }: EmployeeTableProps) => {
     {
       title: 'Прогресс',
       key: 'progress',
-      render: (_: unknown, record: Employee) => {
-        if (record.role !== 'employee')
+      render: (_: unknown, record: EmployeeTableRow) => {
+        if (record.role !== 'new_employee' || !record.completedTasks || !record.totalTasks)
           return <Text style={{ color: '#bbb', fontSize: 13 }}>—</Text>
         const percent = Math.round(
           (record.completedTasks / record.totalTasks) * 100
@@ -172,7 +173,7 @@ const EmployeeTable = ({ employees }: EmployeeTableProps) => {
     {
       title: 'Настроение',
       key: 'mood',
-      render: (_: unknown, record: Employee) => {
+      render: (_: unknown, record: EmployeeTableRow) => {
         if (!record.lastMood)
           return <Text style={{ fontSize: 15, color: '#bbb' }}>—</Text>
         return (

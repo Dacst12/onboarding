@@ -5,11 +5,10 @@ const { Title, Text } = Typography
 interface WelcomeCardProps {
   name: string
   daysPassed: number
-  totalDays: number
+  adaptationPercent: number
 }
 
-const WelcomeCard = ({ name, daysPassed, totalDays }: WelcomeCardProps) => {
-  const percent = Math.round((daysPassed / totalDays) * 100)
+const WelcomeCard = ({ name, daysPassed, adaptationPercent }: WelcomeCardProps) => {
 
   return (
     <Card
@@ -33,7 +32,7 @@ const WelcomeCard = ({ name, daysPassed, totalDays }: WelcomeCardProps) => {
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>
-            {percent}%
+            {adaptationPercent}%
           </div>
           <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
             адаптации
@@ -41,7 +40,7 @@ const WelcomeCard = ({ name, daysPassed, totalDays }: WelcomeCardProps) => {
         </div>
       </div>
       <Progress
-        percent={percent}
+        percent={adaptationPercent}
         strokeColor="rgba(255,255,255,0.9)"
         trailColor="rgba(255,255,255,0.25)"
         showInfo={false}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { List, Tag, Typography, Checkbox, message } from 'antd'
-import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { List, Tag, Typography, Checkbox, message, Modal, Button } from 'antd'
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined } from '@ant-design/icons'
 import TaskModal from '../ui/TaskModal'
 import EditTaskModal from '../ui/EditTaskModal'
 import type { ModalTask } from '../ui/TaskModal'
@@ -14,17 +14,27 @@ export interface AdminTask {
   stage: string
   done: boolean
   due: string
+  dueDate?: string
   overdue: boolean
+  isSystemTask?: boolean
 }
 
 interface EmployeeTaskListProps {
   tasks: AdminTask[]
   onTasksChange: (tasks: AdminTask[]) => void
+  onDeleteTask?: (taskId: number) => void
 }
 
-const EmployeeTaskList = ({ tasks, onTasksChange }: EmployeeTaskListProps) => {
+const EmployeeTaskList = ({ tasks, onTasksChange, onDeleteTask }: EmployeeTaskListProps) => {
   const [selectedTask, setSelectedTask] = useState<ModalTask | null>(null)
   const [editingTask, setEditingTask] = useState<AdminTask | null>(null)
+
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const dateA = a.dueDate || a.due
+    const dateB = b.dueDate || b.due
+    if (!dateA || !dateB) return 0
+    return new Date(dateA).getTime() - new Date(dateB).getTime()
+  })
 
   const handleToggleInline = (taskId: number) => {
     onTasksChange(
@@ -50,7 +60,7 @@ const EmployeeTaskList = ({ tasks, onTasksChange }: EmployeeTaskListProps) => {
   return (
     <>
       <List
-        dataSource={tasks}
+        dataSource={sortedTasks}
         renderItem={(task) => (
           <List.Item
             style={{
@@ -193,13 +203,44 @@ const EmployeeTaskList = ({ tasks, onTasksChange }: EmployeeTaskListProps) => {
               >
                 {task.due}
               </Text>
+
+              {!task.isSystemTask && onDeleteTask && (
+                <Button
+                  type="text"
+                  danger
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    Modal.confirm({
+                      title: 'Удалить задачу?',
+                      content: 'Задача будет удалена безвозвратно.',
+                      okText: 'Удалить',
+                      cancelText: 'Отмена',
+                      okButtonProps: { danger: true },
+                      onOk: () => {
+                        onDeleteTask(task.id)
+                      },
+                    })
+                  }}
+                  style={{ flexShrink: 0 }}
+                />
+              )}
             </div>
           </List.Item>
         )}
       />
 
       <TaskModal
-        task={selectedTask}
+        task={
+          selectedTask
+            ? {
+                ...selectedTask,
+                isSystemTask: tasks.find((t) => t.id === selectedTask.id)
+                  ?.isSystemTask,
+              }
+            : null
+        }
         onClose={() => setSelectedTask(null)}
         onToggle={handleToggleModal}
         onEdit={() => {
@@ -209,6 +250,14 @@ const EmployeeTaskList = ({ tasks, onTasksChange }: EmployeeTaskListProps) => {
             setSelectedTask(null)
           }
         }}
+        onDelete={
+          selectedTask
+            ? () => {
+                onDeleteTask?.(selectedTask.id)
+                setSelectedTask(null)
+              }
+            : undefined
+        }
       />
 
       <EditTaskModal

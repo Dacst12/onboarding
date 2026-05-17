@@ -9,6 +9,7 @@ interface RoadmapSidebarProps {
   daysPassed: number
   totalDays: number
   stages: Stage[]
+  onTaskToggle?: (taskId: number, stageStatus: 'done' | 'current' | 'locked') => void
 }
 
 const RoadmapSidebar = ({
@@ -16,8 +17,14 @@ const RoadmapSidebar = ({
   daysPassed,
   totalDays,
   stages,
+  onTaskToggle,
 }: RoadmapSidebarProps) => {
-  const percent = Math.round((daysPassed / totalDays) * 100)
+  const totalTasks = stages.reduce((acc, stage) => acc + stage.tasks.length, 0)
+  const completedTasks = stages.reduce(
+    (acc, stage) => acc + stage.tasks.filter((t) => t.done).length,
+    0
+  )
+  const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
   const currentStage = stages.find((s) => s.status === 'current')
 
   return (
@@ -147,7 +154,15 @@ const RoadmapSidebar = ({
                   return (
                     <div
                       key={task.id}
-                      style={{ position: 'relative', marginBottom: 12 }}
+                      style={{
+                        position: 'relative',
+                        marginBottom: 12,
+                        cursor: stage.status !== 'locked' ? 'pointer' : 'default',
+                      }}
+                      onClick={() =>
+                        stage.status !== 'locked' &&
+                        onTaskToggle?.(task.id, stage.status)
+                      }
                     >
                       <div
                         style={{

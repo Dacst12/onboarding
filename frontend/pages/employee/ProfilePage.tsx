@@ -1,25 +1,54 @@
-import { Typography } from 'antd'
+import { useMemo, useState } from 'react'
+import { Typography, Modal, Form, Input } from 'antd'
 import useAuthStore from '../../store/authStore'
 import ProfileInfo from '../../components/profile/ProfileInfo'
 import ProfileContacts from '../../components/profile/ProfileContacts'
+import { formatDate } from '../../utils/date'
+import api from '../../api/axios'
 
 const { Title } = Typography
 
-const mockProfile = {
-  name: 'Иван Петров',
-  position: 'Frontend Developer',
-  department: 'Разработка',
-  team: 'Frontend',
-  email: 'ivan@company.com',
-  startDate: '5 мая 2025',
-  mentor: 'Пётр Иванов',
-  phone: '+79991234567',
-  telegram: '@ivan_petrov',
-  vk: 'vk.com/ivan_petrov',
-}
-
 const ProfilePage = () => {
-  const { user } = useAuthStore()
+  const { user, setAuth, token } = useAuthStore()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+
+  const startDate = useMemo(() => {
+    if (!user?.created_at) return ''
+    return formatDate(user.created_at)
+  }, [user])
+
+  const isAdmin = user?.role === 'admin'
+
+  const handleOpenModal = () => {
+    form.setFieldsValue({
+      full_name: user?.full_name || '',
+      position: user?.position || '',
+      department: user?.department || '',
+    })
+    setIsModalOpen(true)
+  }
+
+  const handleSaveModal = async () => {
+    const values = await form.validateFields()
+    setLoading(true)
+    try {
+      const response = await api.patch('/me', values)
+      if (token) {
+        setAuth(response.data, token)
+      }
+      setIsModalOpen(false)
+    } catch {
+      // Error handled by axios interceptor
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!user) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div
@@ -36,22 +65,56 @@ const ProfilePage = () => {
       </Title>
 
       <ProfileInfo
-        name={user?.name ?? mockProfile.name}
-        email={user?.email ?? mockProfile.email}
-        position={mockProfile.position}
-        department={mockProfile.department}
-        team={mockProfile.team}
-        startDate={mockProfile.startDate}
-        mentor={mockProfile.mentor}
+        name={user.full_name}
+        email={user.email}
+        position={user.position || 'Не указано'}
+        department={user.department || 'Не указано'}
+        startDate={startDate}
+        mentor={user.mentor?.full_name || 'Не назначен'}
+        isEditable={isAdmin}
+        onEdit={handleOpenModal}
       />
 
       <ProfileContacts
         initial={{
-          phone: mockProfile.phone,
-          telegram: mockProfile.telegram,
-          vk: mockProfile.vk,
+          phone: user.phone || '',
+          telegram: user.telegram || '',
         }}
       />
+
+      <Modal
+        title="Редактировать профиль"
+        open={isModalOpen}
+        onOk={handleSaveModal}
+        onCancel={() => setIsModalOpen(false)}
+        confirmLoading={loading}
+        okText="Сохранить"
+        cancelText="Отмена"
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="full_name"
+            label="Имя"
+            rules={[{ required: false }]}
+          >
+            <Input placeholder="Ваше имя" size="large" />
+          </Form.Item>
+          <Form.Item
+            name="position"
+            label="Должность"
+            rules={[{ required: false }]}
+          >
+            <Input placeholder="Например: Senior Developer" size="large" />
+          </Form.Item>
+          <Form.Item
+            name="department"
+            label="Отдел"
+            rules={[{ required: false }]}
+          >
+            <Input placeholder="Например: Разработка" size="large" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   )
 }

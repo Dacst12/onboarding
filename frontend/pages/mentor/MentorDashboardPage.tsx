@@ -1,45 +1,64 @@
-import { Row, Col, Typography } from 'antd'
+import { Row, Col, Typography, Spin } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import MenteeCard from '../../components/mentor/MenteeCard'
+import { useMentees, useMenteeOnboardingPlan } from '../../api/hooks/useMentor'
+import { formatDate } from '../../utils/date'
 import type { Mentee } from '../../components/mentor/types'
+import type { MenteeSummary } from '../../api/mentor'
 
 const { Title, Text } = Typography
 
-const mockMentees: Mentee[] = [
-  {
-    id: 1,
-    name: 'Иван Петров',
-    position: 'Frontend Developer',
-    department: 'Разработка',
-    startDate: '5 мая 2025',
-    completedTasks: 8,
-    totalTasks: 12,
-    lastSurvey: { week: 2, filled: true, mood: 4 },
-  },
-  {
-    id: 2,
-    name: 'Анна Сидорова',
-    position: 'QA Engineer',
-    department: 'Разработка',
-    startDate: '12 мая 2025',
-    completedTasks: 3,
-    totalTasks: 12,
-    lastSurvey: { week: 1, filled: false },
-  },
-  {
-    id: 3,
-    name: 'Дмитрий Ким',
-    position: 'Backend Developer',
-    department: 'Разработка',
-    startDate: '1 апреля 2025',
-    completedTasks: 11,
-    totalTasks: 12,
-    lastSurvey: { week: 4, filled: true, mood: 5 },
-  },
-]
+interface MenteeCardContainerProps {
+  summary: MenteeSummary
+  onClick: () => void
+}
+
+const MenteeCardContainer = ({ summary, onClick }: MenteeCardContainerProps) => {
+  const { data: plan } = useMenteeOnboardingPlan(summary.id)
+
+  const completedTasks = plan
+    ? plan.stages.reduce((sum, stage) => sum + stage.tasks.filter(t => t.is_completed).length, 0)
+    : 0
+  const totalTasks = plan
+    ? plan.stages.reduce((sum, stage) => sum + stage.tasks.length, 0)
+    : 0
+
+  const daysPassed = plan
+    ? Math.max(
+        0,
+        Math.floor(
+          (new Date().getTime() - new Date(plan.start_date).getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
+      )
+    : 0
+  const week = Math.max(1, Math.floor(daysPassed / 7) + 1)
+
+  const mentee: Mentee = {
+    id: summary.id,
+    email: '',
+    full_name: summary.full_name,
+    role: 'new_employee' as const,
+    position: summary.position || '',
+    department: '',
+    is_active: true,
+    created_at: summary.start_date || new Date().toISOString(),
+    startDate: summary.start_date ? formatDate(summary.start_date) : '—',
+    completedTasks,
+    totalTasks,
+    lastSurvey: { week, filled: summary.last_feedback_available, mood: undefined },
+  }
+
+  return <MenteeCard mentee={mentee} onClick={onClick} />
+}
 
 const MentorDashboardPage = () => {
   const navigate = useNavigate()
+  const { data: menteesSummary = [], isLoading } = useMentees()
+
+  if (isLoading) {
+    return <Spin />
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -48,16 +67,16 @@ const MentorDashboardPage = () => {
           Мои подопечные
         </Title>
         <Text style={{ color: '#999', fontSize: 16 }}>
-          {mockMentees.length} сотрудника на адаптации
+          {menteesSummary.length} сотрудника на адаптации
         </Text>
       </div>
 
       <Row gutter={[16, 16]}>
-        {mockMentees.map((mentee) => (
-          <Col key={mentee.id} span={8}>
-            <MenteeCard
-              mentee={mentee}
-              onClick={() => navigate(`/mentor/${mentee.id}`)}
+        {menteesSummary.map((summary) => (
+          <Col key={summary.id} span={8}>
+            <MenteeCardContainer
+              summary={summary}
+              onClick={() => navigate(`/mentor/${summary.id}`)}
             />
           </Col>
         ))}

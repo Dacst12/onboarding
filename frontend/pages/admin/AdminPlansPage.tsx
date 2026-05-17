@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Typography, Button, Modal } from 'antd'
+import { useState, useMemo } from 'react'
+import { Typography, Button, Modal, Spin, message } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import PlanCard from '../../components/admin/plans/PlanCard'
 import AddPlanModal from '../../components/admin/plans/AddPlanModal'
@@ -8,102 +8,24 @@ import AddStageModal from '../../components/admin/plans/AddStageModal'
 import EditStageModal from '../../components/admin/plans/EditStageModal'
 import AddTaskModal from '../../components/admin/plans/AddTaskModal'
 import EditPlanTaskModal from '../../components/ui/EditPlanTaskModal'
-import type {
-  Plan,
-  PlanStage,
-  PlanTask,
-} from '../../components/admin/plans/types'
+import {
+  useTemplatePlans,
+  useCreateTemplatePlan,
+  useUpdateTemplatePlan,
+  useDeleteTemplatePlan,
+  useAddTemplateStage,
+  useUpdateTemplateStage,
+  useDeleteTemplateStage,
+  useAddTemplateTask,
+  useUpdateTemplateTask,
+  useDeleteTemplateTask,
+} from '../../api/hooks/useAdmin'
+import type { Plan, PlanStage } from '../../components/admin/plans/types'
 import type { PlanTaskToEdit } from '../../components/ui/EditPlanTaskModal'
 
 const { Title, Text } = Typography
 
-const initialPlans: Plan[] = [
-  {
-    id: 1,
-    name: 'Онбординг разработчика',
-    roleType: 'Frontend / Backend Developer',
-    stages: [
-      {
-        id: 1,
-        title: 'Первая неделя',
-        tasks: [
-          {
-            id: 1,
-            title: 'Встреча с наставником',
-            description: 'Познакомиться и обсудить план',
-            type: 'meeting',
-            offsetDay: 1,
-          },
-          {
-            id: 2,
-            title: 'Получить доступ к GitLab',
-            description: 'Запросить доступ через IT-отдел',
-            type: 'access',
-            offsetDay: 1,
-          },
-          {
-            id: 3,
-            title: 'Прочитать регламент',
-            description: 'Ознакомиться с внутренними правилами',
-            type: 'training',
-            offsetDay: 2,
-          },
-        ],
-      },
-      {
-        id: 2,
-        title: 'Второй месяц',
-        tasks: [
-          {
-            id: 4,
-            title: 'Первый pull request',
-            description: 'Создать PR и пройти ревью',
-            type: 'training',
-            offsetDay: 14,
-          },
-          {
-            id: 5,
-            title: 'Провести код-ревью',
-            description: 'Самостоятельно ревьювнуть коллегу',
-            type: 'meeting',
-            offsetDay: 21,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Онбординг QA',
-    roleType: 'QA Engineer',
-    stages: [
-      {
-        id: 3,
-        title: 'Первая неделя',
-        tasks: [
-          {
-            id: 6,
-            title: 'Встреча с наставником',
-            description: 'Познакомиться и обсудить план',
-            type: 'meeting',
-            offsetDay: 1,
-          },
-          {
-            id: 7,
-            title: 'Получить доступ к TestRail',
-            description: 'Запросить доступ к системе тестирования',
-            type: 'access',
-            offsetDay: 1,
-          },
-        ],
-      },
-    ],
-  },
-]
-
 const AdminPlansPage = () => {
-  const [plans, setPlans] = useState(initialPlans)
-
   const [addPlanModal, setAddPlanModal] = useState(false)
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
 
@@ -121,21 +43,60 @@ const AdminPlansPage = () => {
     planId: number | null
     stageId: number | null
   }>({ open: false, planId: null, stageId: null })
-  const [editingTask, setEditingTask] = useState<PlanTaskToEdit | null>(null)
-  const [editingTaskMeta, setEditingTaskMeta] = useState<{
-    planId: number
+  const [editingTask, setEditingTask] = useState<{
     stageId: number
+    task: PlanTaskToEdit
   } | null>(null)
 
-  const handleAddPlan = (values: { name: string; roleType: string }) => {
-    setPlans((prev) => [...prev, { id: Date.now(), ...values, stages: [] }])
+  const { data: templates = [], isLoading } = useTemplatePlans()
+  const createMutation = useCreateTemplatePlan()
+  const updateMutation = useUpdateTemplatePlan()
+  const deleteMutation = useDeleteTemplatePlan()
+  const addStageMutation = useAddTemplateStage()
+  const updateStageMutation = useUpdateTemplateStage()
+  const deleteStageMutation = useDeleteTemplateStage()
+  const addTaskMutation = useAddTemplateTask()
+  const updateTaskMutation = useUpdateTemplateTask()
+  const deleteTaskMutation = useDeleteTemplateTask()
+
+  const plans = useMemo(() => {
+    return templates.map((template) => ({
+      id: template.id,
+      name: template.title,
+      roleType: '',
+      stages: template.stages.map((stage) => ({
+        id: stage.id,
+        title: stage.title,
+        tasks: stage.tasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          description: task.description || '',
+          offsetDay: task.offset_days,
+        })),
+      })),
+    })) as Plan[]
+  }, [templates])
+
+  const handleAddPlan = async (values: { name: string; roleType: string }) => {
+    try {
+      await createMutation.mutateAsync({ title: values.name })
+      setAddPlanModal(false)
+    } catch {
+      message.error('Ошибка при создании шаблона')
+    }
   }
 
-  const handleSavePlan = (values: { name: string; roleType: string }) => {
-    setPlans((prev) =>
-      prev.map((p) => (p.id === editingPlan?.id ? { ...p, ...values } : p))
-    )
-    setEditingPlan(null)
+  const handleSavePlan = async (values: { name: string; roleType: string }) => {
+    if (!editingPlan) return
+    try {
+      await updateMutation.mutateAsync({
+        templateId: editingPlan.id,
+        payload: { title: values.name },
+      })
+      setEditingPlan(null)
+    } catch {
+      message.error('Ошибка при обновлении шаблона')
+    }
   }
 
   const handleDeletePlan = (planId: number) => {
@@ -145,121 +106,130 @@ const AdminPlansPage = () => {
       okText: 'Удалить',
       cancelText: 'Отмена',
       okButtonProps: { danger: true },
-      onOk: () => setPlans((prev) => prev.filter((p) => p.id !== planId)),
+      onOk: async () => {
+        try {
+          await deleteMutation.mutateAsync(planId)
+        } catch {
+          message.error('Ошибка при удалении шаблона')
+        }
+      },
     })
   }
 
-  const handleAddStage = (title: string) => {
+  const handleAddStage = async (title: string) => {
     if (!addStageModal.planId) return
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === addStageModal.planId
-          ? {
-              ...p,
-              stages: [...p.stages, { id: Date.now(), title, tasks: [] }],
-            }
-          : p
-      )
-    )
+    try {
+      const plan = plans.find((p) => p.id === addStageModal.planId)
+      const orderIndex = (plan?.stages.length ?? 0) + 1
+      await addStageMutation.mutateAsync({
+        templateId: addStageModal.planId,
+        payload: { title, order_index: orderIndex },
+      })
+      setAddStageModal({ open: false, planId: null })
+      message.success('Этап создан')
+    } catch {
+      message.error('Ошибка при создании этапа')
+    }
   }
 
-  const handleSaveStage = (title: string) => {
+  const handleSaveStage = async (title: string) => {
     if (!editingStage) return
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === editingStage.planId
-          ? {
-              ...p,
-              stages: p.stages.map((s) =>
-                s.id === editingStage.stage.id ? { ...s, title } : s
-              ),
-            }
-          : p
-      )
-    )
-    setEditingStage(null)
+    try {
+      await updateStageMutation.mutateAsync({
+        templateId: editingStage.planId,
+        stageId: editingStage.stage.id,
+        payload: { title },
+      })
+      setEditingStage(null)
+      message.success('Этап обновлен')
+    } catch {
+      message.error('Ошибка при обновлении этапа')
+    }
   }
 
-  const handleDeleteStage = (planId: number, stageId: number) => {
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === planId
-          ? { ...p, stages: p.stages.filter((s) => s.id !== stageId) }
-          : p
-      )
-    )
+  const handleDeleteStage = async (planId: number, stageId: number) => {
+    Modal.confirm({
+      title: 'Удалить этап?',
+      content: 'Этап и все его задачи будут удалены.',
+      okText: 'Удалить',
+      cancelText: 'Отмена',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteStageMutation.mutateAsync({ templateId: planId, stageId })
+          message.success('Этап удален')
+        } catch {
+          message.error('Ошибка при удалении этапа')
+        }
+      },
+    })
   }
 
-  const handleAddTask = (values: {
+  const handleAddTask = async (values: {
     title: string
     description: string
-    type: string
     offsetDay: number
   }) => {
-    if (!addTaskModal.planId || !addTaskModal.stageId) return
-    const newTask: PlanTask = {
-      id: Date.now(),
-      ...values,
-      type: values.type as PlanTask['type'],
+    if (!addTaskModal.stageId) return
+    try {
+      await addTaskMutation.mutateAsync({
+        stageId: addTaskModal.stageId,
+        payload: {
+          title: values.title,
+          description: values.description || undefined,
+          offset_days: values.offsetDay,
+        },
+      })
+      setAddTaskModal({ open: false, planId: null, stageId: null })
+      message.success('Задача создана')
+    } catch {
+      message.error('Ошибка при создании задачи')
     }
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === addTaskModal.planId
-          ? {
-              ...p,
-              stages: p.stages.map((s) =>
-                s.id === addTaskModal.stageId
-                  ? { ...s, tasks: [...s.tasks, newTask] }
-                  : s
-              ),
-            }
-          : p
-      )
-    )
   }
 
-  const handleSaveTask = (values: Partial<PlanTaskToEdit>) => {
-    if (!editingTaskMeta || !editingTask) return
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === editingTaskMeta.planId
-          ? {
-              ...p,
-              stages: p.stages.map((s) =>
-                s.id === editingTaskMeta.stageId
-                  ? {
-                      ...s,
-                      tasks: s.tasks.map((t) =>
-                        t.id === editingTask.id ? { ...t, ...values } : t
-                      ),
-                    }
-                  : s
-              ),
-            }
-          : p
-      )
-    )
+  const handleSaveTask = async (values: Partial<PlanTaskToEdit>) => {
+    if (!editingTask) return
+    try {
+      await updateTaskMutation.mutateAsync({
+        stageId: editingTask.stageId,
+        taskId: editingTask.task.id,
+        payload: {
+          title: values.title,
+          description: values.description,
+          offset_days: values.offsetDay,
+        },
+      })
+      setEditingTask(null)
+      message.success('Задача обновлена')
+    } catch {
+      message.error('Ошибка при обновлении задачи')
+    }
   }
 
-  const handleDeleteTask = (
-    planId: number,
+  const handleDeleteTask = async (
+    _planId: number,
     stageId: number,
     taskId: number
   ) => {
-    setPlans((prev) =>
-      prev.map((p) =>
-        p.id === planId
-          ? {
-              ...p,
-              stages: p.stages.map((s) =>
-                s.id === stageId
-                  ? { ...s, tasks: s.tasks.filter((t) => t.id !== taskId) }
-                  : s
-              ),
-            }
-          : p
-      )
-    )
+    Modal.confirm({
+      title: 'Удалить задачу?',
+      content: 'Задача будет удалена безвозвратно.',
+      okText: 'Удалить',
+      cancelText: 'Отмена',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteTaskMutation.mutateAsync({ stageId, taskId })
+          message.success('Задача удалена')
+        } catch {
+          message.error('Ошибка при удалении задачи')
+        }
+      },
+    })
+  }
+
+  if (isLoading) {
+    return <Spin />
   }
 
   return (
@@ -304,9 +274,8 @@ const AdminPlansPage = () => {
           onAddTask={(planId, stageId) =>
             setAddTaskModal({ open: true, planId, stageId })
           }
-          onEditTask={(task, planId, stageId) => {
-            setEditingTask(task)
-            setEditingTaskMeta({ planId, stageId })
+          onEditTask={(task, _planId, stageId) => {
+            setEditingTask({ stageId, task })
           }}
           onDeleteTask={handleDeleteTask}
         />
@@ -345,10 +314,9 @@ const AdminPlansPage = () => {
       />
 
       <EditPlanTaskModal
-        task={editingTask}
+        task={editingTask?.task ?? null}
         onClose={() => {
           setEditingTask(null)
-          setEditingTaskMeta(null)
         }}
         onSave={handleSaveTask}
       />

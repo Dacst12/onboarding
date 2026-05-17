@@ -28,6 +28,27 @@ async def mentees(current_user: User = Depends(require_role(UserRole.mentor)), d
     return items
 
 
+@router.get('/mentees/{user_id}')
+async def get_mentee(
+    user_id: int,
+    current_user: User = Depends(require_roles([UserRole.mentor, UserRole.admin])),
+    db: AsyncSession = Depends(get_db),
+):
+    mentee = await db.get(User, user_id)
+    if not mentee or (current_user.role != UserRole.admin and mentee.mentor_id != current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Forbidden')
+    return {
+        'id': mentee.id,
+        'email': mentee.email,
+        'full_name': mentee.full_name,
+        'role': mentee.role,
+        'position': mentee.position,
+        'department': mentee.department,
+        'is_active': mentee.is_active,
+        'created_at': mentee.created_at,
+    }
+
+
 @router.get('/mentees/{user_id}/plan', response_model=PlanRead)
 async def mentee_plan(
     user_id: int,
@@ -61,6 +82,26 @@ async def update_deadline(
     task.due_date = payload.due_date
     await db.commit()
     return {'detail': 'Deadline updated'}
+
+
+@router.patch('/mentees/{user_id}/tasks/{task_id}/status', response_model=TaskCompleteResponse)
+async def update_task_status(
+    user_id: int,
+    task_id: int,
+    payload: dict,
+    current_user: User = Depends(require_roles([UserRole.mentor, UserRole.admin])),
+    db: AsyncSession = Depends(get_db),
+):
+    mentee = await db.get(User, user_id)
+    if not mentee or (current_user.role != UserRole.admin and mentee.mentor_id != current_user.id):
+        raise HTTPException(status_code=403, detail='Forbidden')
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail='Task not found')
+    if 'is_completed' in payload:
+        task.is_completed = payload['is_completed']
+    await db.commit()
+    return {'detail': 'Task status updated'}
 
 
 @router.post('/mentees/{user_id}/tasks', response_model=TaskCompleteResponse)
@@ -105,3 +146,28 @@ async def delete_task(
     await db.delete(task)
     await db.commit()
     return {'detail': 'Task deleted'}
+
+
+@router.get('/mentees/{user_id}/feedback')
+async def get_mentee_feedback(
+    user_id: int,
+    current_user: User = Depends(require_roles([UserRole.mentor, UserRole.admin])),
+    db: AsyncSession = Depends(get_db),
+):
+    mentee = await db.get(User, user_id)
+    if not mentee or (current_user.role != UserRole.admin and mentee.mentor_id != current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Forbidden')
+    feedback_result = await db.execute(
+        select(Feedback).where(Feedback.user_id == user_id).order_by(Feedback.week_number.asc())
+    )
+    feedbacks = feedback_result.scalars().all()
+    return [
+        {
+            'week_number': f.week_number,
+            'mood': f.mood,
+            'tasks_clear': f.tasks_clear,
+            'wish': f.wish,
+            'created_at': f.created_at,
+        }
+        for f in feedbacks
+    ]

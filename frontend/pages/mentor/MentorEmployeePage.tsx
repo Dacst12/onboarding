@@ -1,146 +1,126 @@
-import { useState } from 'react'
-import { Row, Col, Button, Modal, Form, Input, DatePicker } from 'antd'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import { useState, useMemo } from 'react'
+import { Row, Col, Button, Spin, Card, Tabs } from 'antd'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons'
 import RoadmapSidebar from '../../components/roadmap/RoadmapSidebar'
 import TaskModal from '../../components/ui/TaskModal'
 import MenteeHeader from '../../components/mentor/MenteeHeader'
 import MenteeStageCard from '../../components/mentor/MenteeStageCard'
+import EmployeeSurveyList from '../../components/admin/EmployeeSurveyList'
+import { useMenteeOnboardingPlan, useUpdateMenteeTaskStatus, useMenteeUserFeedback, useMentee } from '../../api/hooks/useMentor'
+import AddCustomTaskModal from '../../components/admin/AddCustomTaskModal'
+import { formatDate } from '../../utils/date'
 import type { ModalTask } from '../../components/ui/TaskModal'
-import type { Stage } from '../../components/roadmap/types'
-
-const mockMentee = {
-  id: 1,
-  name: 'Иван Петров',
-  position: 'Frontend Developer',
-  department: 'Разработка',
-  startDate: '5 мая 2025',
-  completedTasks: 8,
-  totalTasks: 12,
-  lastSurvey: { week: 2, filled: true, mood: 4 },
-}
-
-const mockStages: Stage[] = [
-  {
-    id: 1,
-    title: 'Знакомство',
-    durationDays: 14,
-    status: 'done',
-    tasks: [
-      {
-        id: 1,
-        title: 'Встреча с наставником',
-        description: 'Обсудить план на первый месяц',
-        done: true,
-        due: '1 мая · 11:00',
-      },
-      {
-        id: 2,
-        title: 'Прочитать регламент',
-        description: 'Ознакомиться с внутренними правилами',
-        done: true,
-        due: '3 мая · 18:00',
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: 'Погружение',
-    durationDays: 30,
-    status: 'current',
-    tasks: [
-      {
-        id: 3,
-        title: 'Первый pull request',
-        description: 'Создать первый PR и пройти код-ревью',
-        done: true,
-        due: '10 мая · 12:00',
-      },
-      {
-        id: 4,
-        title: 'Провести код-ревью',
-        description: 'Самостоятельно провести ревью коллеги',
-        done: false,
-        due: '17 мая · 15:00',
-      },
-      {
-        id: 5,
-        title: 'Заполнить анкету безопасности',
-        description: 'Пройти инструктаж по ИБ',
-        done: false,
-        due: '10 мая · 18:00',
-        overdue: true,
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: 'Самостоятельность',
-    durationDays: 46,
-    status: 'locked',
-    tasks: [
-      {
-        id: 6,
-        title: 'Провести демо',
-        description: 'Демонстрация работы для команды',
-        done: false,
-        due: '1 июня · 11:00',
-      },
-      {
-        id: 7,
-        title: 'Закрыть первый спринт',
-        description: 'Самостоятельно закрыть спринт',
-        done: false,
-        due: '15 июня · 18:00',
-      },
-    ],
-  },
-]
 
 const MentorEmployeePage = () => {
   const navigate = useNavigate()
-  const [stages, setStages] = useState(mockStages)
-  const [selectedTask, setSelectedTask] = useState<ModalTask | null>(null)
-  const [addTaskModal, setAddTaskModal] = useState<{
-    open: boolean
-    stageId: number | null
-  }>({ open: false, stageId: null })
-  const [form] = Form.useForm()
+  const { menteeId } = useParams<{ menteeId: string }>()
+  const menteeIdNum = menteeId ? parseInt(menteeId) : 0
 
-  const handleAddTask = () => {
-    const values = form.getFieldsValue()
-    if (!addTaskModal.stageId || !values.title) return
+  const { data: plan, isLoading, refetch: refetchPlan } = useMenteeOnboardingPlan(menteeIdNum)
+  const { data: userFeedbacks = [] } = useMenteeUserFeedback(menteeIdNum)
+  const { data: menteeUser } = useMentee(menteeIdNum)
+  const updateTaskStatusMutation = useUpdateMenteeTaskStatus()
 
-    const newTask = {
-      id: Date.now(),
-      title: values.title,
-      description: values.description ?? '',
-      done: false,
-      due: values.due ? values.due.format('D MMM · HH:mm') : '—',
-      isCustom: true as const,
+  const [selectedTask, setSelectedTask] = useState<(ModalTask & { stageId?: number }) | null>(null)
+  const [addTaskModalOpen, setAddTaskModalOpen] = useState(false)
+
+  const stages = useMemo(() => {
+    if (!plan) return []
+
+    const today = new Date()
+
+    return plan.stages.map((stage, index) => {
+      let status: 'done' | 'current' | 'locked' = 'locked'
+
+      const allTasksDone = stage.tasks.every((t) => t.is_completed)
+      const hasStartedTask = stage.tasks.some((t) => t.is_completed)
+
+      if (allTasksDone) {
+        status = 'done'
+      } else if (hasStartedTask || index === 0) {
+        status = 'current'
+      }
+
+      return {
+        id: stage.id,
+        title: stage.title,
+        durationDays: 30,
+        status,
+        tasks: stage.tasks.map((task) => {
+          const dueDate = task.due_date ? new Date(task.due_date) : null
+          const isOverdue = dueDate ? dueDate < today && !task.is_completed : false
+
+          return {
+            id: task.id,
+            title: task.title,
+            description: task.description || '',
+            done: task.is_completed,
+            due: task.due_date ? formatDate(task.due_date) : '',
+            overdue: isOverdue,
+          }
+        }),
+      }
+    })
+  }, [plan])
+
+  const daysPassed = useMemo(() => {
+    if (!plan) return 0
+    const today = new Date()
+    const startDate = new Date(plan.start_date)
+    const days = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    return Math.max(0, days)
+  }, [plan])
+
+  const mentee = useMemo(() => {
+    const defaultMentee = {
+      id: 0,
+      name: '',
+      position: '',
+      department: '',
+      startDate: '',
+      completedTasks: 0,
+      totalTasks: 0,
+      lastSurvey: { week: 0, filled: false },
     }
 
-    setStages((prev) =>
-      prev.map((stage) =>
-        stage.id === addTaskModal.stageId
-          ? { ...stage, tasks: [...stage.tasks, newTask] }
-          : stage
-      )
-    )
+    if (!plan) return defaultMentee
 
-    form.resetFields()
-    setAddTaskModal({ open: false, stageId: null })
+    const completedTasks = plan.stages.reduce((sum, stage) => sum + stage.tasks.filter(t => t.is_completed).length, 0)
+    const totalTasks = plan.stages.reduce((sum, stage) => sum + stage.tasks.length, 0)
+
+    return {
+      id: menteeIdNum,
+      name: menteeUser?.full_name || '',
+      position: menteeUser?.position || '',
+      department: menteeUser?.department || '',
+      startDate: plan.start_date ? formatDate(plan.start_date) : '',
+      completedTasks,
+      totalTasks,
+      lastSurvey: { week: 0, filled: false },
+    }
+  }, [plan, menteeIdNum, menteeUser])
+
+  const surveys = useMemo(() => {
+    if (!userFeedbacks || !Array.isArray(userFeedbacks)) return []
+    return userFeedbacks.map((feedback) => ({
+      week: feedback.week_number,
+      mood: feedback.mood,
+      clarity: feedback.tasks_clear === true ? 'yes' : feedback.tasks_clear === false ? 'no' : 'partial',
+      comment: feedback.wish || undefined,
+      date: feedback.created_at ? formatDate(feedback.created_at) : '',
+    }))
+  }, [userFeedbacks])
+
+  if (isLoading) {
+    return <Spin />
   }
 
-  const handleDeleteTask = (stageId: number, taskId: number) => {
-    setStages((prev) =>
-      prev.map((stage) =>
-        stage.id === stageId
-          ? { ...stage, tasks: stage.tasks.filter((t) => t.id !== taskId) }
-          : stage
-      )
-    )
+  if (!menteeId || !menteeIdNum) {
+    navigate('/mentor')
+    return null
   }
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -153,73 +133,108 @@ const MentorEmployeePage = () => {
         Назад
       </Button>
 
-      <MenteeHeader {...mockMentee} />
+      <MenteeHeader {...mentee} />
 
       <Row gutter={24} align="stretch">
         <Col span={5}>
           <RoadmapSidebar
             name="План адаптации"
-            daysPassed={12}
+            daysPassed={daysPassed}
             totalDays={90}
             stages={stages}
           />
         </Col>
         <Col span={19}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {stages.map((stage) => (
-              <MenteeStageCard
-                key={stage.id}
-                stage={stage}
-                onTaskClick={setSelectedTask}
-                onAddTask={(stageId) =>
-                  setAddTaskModal({ open: true, stageId })
-                }
-                onDeleteTask={handleDeleteTask}
+          <Card style={{ borderRadius: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <span style={{ fontSize: 16, fontWeight: 500 }}>План адаптации</span>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                size="small"
+                style={{ background: '#ff6720', border: 'none' }}
+                onClick={() => setAddTaskModalOpen(true)}
+              >
+                Добавить задачу
+              </Button>
+            </div>
+
+            <Tabs
+              items={[
+                {
+                  key: 'tasks',
+                  label: <span style={{ fontSize: 15 }}>Задачи</span>,
+                  children: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {stages.map((stage) => (
+                        <MenteeStageCard
+                          key={stage.id}
+                          stage={stage}
+                          onTaskClick={(task) => setSelectedTask({ ...task, stageId: stage.id })}
+                          onTaskToggle={(taskId, done) => {
+                            updateTaskStatusMutation.mutate(
+                              {
+                                userId: menteeIdNum,
+                                taskId,
+                                isCompleted: done,
+                              },
+                              {
+                                onSuccess: () => {
+                                  refetchPlan()
+                                },
+                              }
+                            )
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'surveys',
+                  label: <span style={{ fontSize: 15 }}>Опросы</span>,
+                  children: <EmployeeSurveyList surveys={surveys} />,
+                },
+              ]}
+            />
+
+            {plan && (
+              <AddCustomTaskModal
+                open={addTaskModalOpen}
+                onClose={() => setAddTaskModalOpen(false)}
+                onAdd={(values) => {
+                  // TODO: Реализовать добавление задачи
+                  console.log('Add task:', values)
+                  setAddTaskModalOpen(false)
+                }}
+                stages={plan.stages}
               />
-            ))}
-          </div>
+            )}
+          </Card>
         </Col>
       </Row>
 
-      <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />
-
-      <Modal
-        open={addTaskModal.open}
-        onCancel={() => setAddTaskModal({ open: false, stageId: null })}
-        onOk={handleAddTask}
-        okText="Добавить"
-        cancelText="Отмена"
-        okButtonProps={{ style: { background: '#ff6720', border: 'none' } }}
-        title="Добавить задачу"
-      >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item
-            name="title"
-            label="Название"
-            rules={[{ required: true, message: 'Введите название' }]}
-          >
-            <Input
-              placeholder="Название задачи"
-              size="large"
-              style={{ borderRadius: 8 }}
-            />
-          </Form.Item>
-          <Form.Item name="description" label="Описание">
-            <Input.TextArea
-              placeholder="Описание задачи"
-              rows={3}
-              style={{ borderRadius: 8 }}
-            />
-          </Form.Item>
-          <Form.Item name="due" label="Срок" style={{ marginBottom: 0 }}>
-            <DatePicker
-              showTime
-              style={{ width: '100%', borderRadius: 8 }}
-              size="large"
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <TaskModal
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onToggle={() => {
+          if (selectedTask) {
+            updateTaskStatusMutation.mutate(
+              {
+                userId: menteeIdNum,
+                taskId: selectedTask.id,
+                isCompleted: !selectedTask.done,
+              },
+              {
+                onSuccess: () => {
+                  setSelectedTask(null)
+                  refetchPlan()
+                },
+              }
+            )
+          }
+        }}
+      />
     </div>
   )
 }

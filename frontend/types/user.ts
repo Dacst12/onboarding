@@ -1,27 +1,24 @@
-export type Role = 'employee' | 'mentor' | 'admin'
+export type Role = 'new_employee' | 'mentor' | 'admin'
+
+export interface UserMentor {
+  id: number
+  full_name: string
+}
 
 export interface User {
   id: number
-  name: string
   email: string
+  full_name: string
   role: Role
-  avatar?: string
-  department?: string
+  position?: string | null
+  department?: string | null
+  telegram?: string | null
+  phone?: string | null
+  responsibility_tags?: string | null
+  is_active: boolean
+  created_at: string
+  mentor_id?: number | null
+  mentor?: UserMentor | null
 }
 
-export interface Employee {
-  id: number
-  name: string
-  email: string
-  role: Role
-  avatar?: string
-  department: string
-  team: string
-  position: string
-  responsibilities: string
-  phone?: string
-  telegram?: string
-  vk?: string
-  startDate: string
-  mentorId?: number
-}
+export type Employee = User

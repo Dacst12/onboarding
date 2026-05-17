@@ -3,6 +3,7 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   EditOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 
 const { Text } = Typography
@@ -16,6 +17,7 @@ export interface ModalTask {
   done: boolean
   overdue?: boolean
   priority?: string
+  isSystemTask?: boolean
 }
 
 interface TaskModalProps {
@@ -23,6 +25,7 @@ interface TaskModalProps {
   onClose: () => void
   onToggle?: () => void
   onEdit?: () => void
+  onDelete?: () => void
   disabled?: boolean
   disabledText?: string
 }
@@ -32,6 +35,7 @@ const TaskModal = ({
   onClose,
   onToggle,
   onEdit,
+  onDelete,
   disabled,
   disabledText,
 }: TaskModalProps) => (
@@ -167,6 +171,27 @@ const TaskModal = ({
             onClick={onEdit}
           >
             Редактировать задачу
+          </Button>
+        )}
+
+        {onDelete && !task.isSystemTask && (
+          <Button
+            block
+            danger
+            icon={<DeleteOutlined />}
+            style={{ borderRadius: 8, marginTop: 4 }}
+            onClick={() => {
+              Modal.confirm({
+                title: 'Удалить задачу?',
+                content: 'Задача будет удалена безвозвратно.',
+                okText: 'Удалить',
+                cancelText: 'Отмена',
+                okButtonProps: { danger: true },
+                onOk: onDelete,
+              })
+            }}
+          >
+            Удалить задачу
           </Button>
         )}
 

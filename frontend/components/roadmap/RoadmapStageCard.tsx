@@ -11,9 +11,10 @@ const { Text } = Typography
 interface RoadmapStageCardProps {
   stage: Stage
   onTaskClick: (task: SelectedTask) => void
+  onTaskToggle?: (taskId: number, stageStatus: 'done' | 'current' | 'locked') => void
 }
 
-const RoadmapStageCard = ({ stage, onTaskClick }: RoadmapStageCardProps) => {
+const RoadmapStageCard = ({ stage, onTaskClick, onTaskToggle }: RoadmapStageCardProps) => {
   const config = statusConfig[stage.status]
   const completedCount = stage.tasks.filter((t) => t.done).length
 
@@ -121,7 +122,8 @@ const RoadmapStageCard = ({ stage, onTaskClick }: RoadmapStageCardProps) => {
                       }}
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (stage.status === 'locked') e.preventDefault()
+                        if (stage.status === 'locked') return
+                        onTaskToggle?.(task.id, stage.status)
                       }}
                     >
                       <Checkbox

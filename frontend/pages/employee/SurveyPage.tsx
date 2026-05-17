@@ -1,6 +1,16 @@
-import { useState } from 'react'
-import { Card, Radio, Input, Button, Typography, Result } from 'antd'
+import { useState, useMemo } from 'react'
+import {
+  Card,
+  Radio,
+  Input,
+  Button,
+  Typography,
+  Result,
+  Spin,
+  Alert,
+} from 'antd'
 import { CheckCircleOutlined } from '@ant-design/icons'
+import { useMyPlan, useCreateFeedback, useLastFeedback } from '../../api/hooks/useEmployee'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -26,6 +36,32 @@ const SurveyPage = () => {
     comment: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: plan, isLoading: isPlanLoading } = useMyPlan()
+  const { data: lastFeedback, isLoading: isFeedbackLoading } = useLastFeedback()
+  const createFeedbackMutation = useCreateFeedback()
+
+  const weekNumber = useMemo(() => {
+    if (!plan) return 1
+    const today = new Date()
+    const startDate = new Date(plan.start_date)
+    const daysPassed = Math.max(
+      0,
+      Math.floor(
+        (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
+    )
+    return Math.max(1, Math.floor(daysPassed / 7) + 1)
+  }, [plan])
+
+  const isSurveyFilledThisWeek = useMemo(() => {
+    return (
+      lastFeedback?.mood !== null &&
+      lastFeedback?.mood !== undefined &&
+      lastFeedback?.week_number === weekNumber
+    )
+  }, [lastFeedback, weekNumber])
 
   const update = <K extends keyof SurveyForm>(
     field: K,
@@ -35,6 +71,60 @@ const SurveyPage = () => {
   }
 
   const canSubmit = form.mood > 0 && form.clarity !== null
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+
+    try {
+      setError(null)
+      await createFeedbackMutation.mutateAsync({
+        week_number: weekNumber,
+        mood: form.mood,
+        tasks_clear: form.clarity !== 'no',
+        wish: form.comment || undefined,
+      })
+      setSubmitted(true)
+    } catch (err) {
+      if (err instanceof Error) {
+        setError('Ошибка при отправке опроса. Попробуй ещё раз')
+      } else if (typeof err === 'object' && err !== null && 'response' in err) {
+        const error = err as { response?: { status: number } }
+        if (error.response?.status === 409) {
+          setError('Опрос за эту неделю уже заполнен')
+        } else {
+          setError('Ошибка при отправке опроса. Попробуй ещё раз')
+        }
+      } else {
+        setError('Ошибка при отправке опроса. Попробуй ещё раз')
+      }
+    }
+  }
+
+  if (isPlanLoading || isFeedbackLoading) {
+    return <Spin />
+  }
+
+  if (isSurveyFilledThisWeek) {
+    return (
+      <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: '48px 32px' }}>
+        <Result
+          icon={
+            <CheckCircleOutlined style={{ color: '#ff6720', fontSize: 64 }} />
+          }
+          title={
+            <Title level={3} style={{ margin: 0 }}>
+              Опрос уже заполнен
+            </Title>
+          }
+          subTitle={
+            <Text style={{ fontSize: 15, color: '#999' }}>
+              Опрос за неделю {weekNumber} уже заполнен — спасибо за ответы!
+            </Text>
+          }
+        />
+      </Card>
+    )
+  }
 
   if (submitted) {
     return (
@@ -50,7 +140,7 @@ const SurveyPage = () => {
           }
           subTitle={
             <Text style={{ fontSize: 15, color: '#999' }}>
-              Твой фидбек за неделю 2 принят — HR уже в курсе
+              Твой фидбек за неделю {weekNumber} принят
             </Text>
           }
         />
@@ -74,9 +164,20 @@ const SurveyPage = () => {
           Как прошла неделя?
         </Title>
         <Text style={{ color: '#999', fontSize: 15 }}>
-          Неделя 2 · займёт около минуты
+          Неделя {weekNumber} · займёт около минуты
         </Text>
       </div>
+
+      {error && (
+        <Alert
+          type="error"
+          message={error}
+          showIcon
+          style={{ borderRadius: 10 }}
+          onClose={() => setError(null)}
+          closable
+        />
+      )}
 
       <Card
         style={{ borderRadius: 12 }}
@@ -239,8 +340,9 @@ const SurveyPage = () => {
           type="primary"
           size="large"
           block
-          disabled={!canSubmit}
-          onClick={() => setSubmitted(true)}
+          disabled={!canSubmit || createFeedbackMutation.isPending}
+          loading={createFeedbackMutation.isPending}
+          onClick={handleSubmit}
           style={{
             borderRadius: 10,
             height: 48,

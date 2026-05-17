@@ -1,18 +1,11 @@
 import { useEffect } from 'react'
-import { Modal, Form, Input, Select } from 'antd'
+import { Modal, Form, Input } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
-
-const taskTypeLabel: Record<string, string> = {
-  access: 'Выдача доступа',
-  training: 'Обучение',
-  meeting: 'Встреча',
-}
 
 export interface PlanTaskToEdit {
   id: number
   title: string
   description: string
-  type: 'access' | 'training' | 'meeting'
   offsetDay: number
 }
 
@@ -69,15 +62,6 @@ const EditPlanTaskModal = ({
         </Form.Item>
         <Form.Item name="description" label="Описание">
           <Input.TextArea rows={2} style={{ borderRadius: 8 }} />
-        </Form.Item>
-        <Form.Item name="type" label="Тип задачи">
-          <Select size="large">
-            {Object.entries(taskTypeLabel).map(([value, label]) => (
-              <Select.Option key={value} value={value}>
-                {label}
-              </Select.Option>
-            ))}
-          </Select>
         </Form.Item>
         <Form.Item
           name="offsetDay"

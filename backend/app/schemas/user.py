@@ -37,6 +37,11 @@ class UserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class UserMentorRead(ORMBase):
+    id: int
+    full_name: str
+
+
 class UserRead(ORMBase):
     id: int
     email: EmailStr
@@ -50,6 +55,7 @@ class UserRead(ORMBase):
     is_active: bool
     created_at: datetime
     mentor_id: int | None
+    mentor: UserMentorRead | None = None
 
 
 class ContactRead(BaseModel):

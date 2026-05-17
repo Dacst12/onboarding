@@ -1,17 +1,15 @@
 import { useState } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Button, Badge, Typography } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Button } from 'antd'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LogoutOutlined,
   UserOutlined,
-  BellOutlined,
 } from '@ant-design/icons'
 import useAuthStore from '../store/authStore'
 
 const { Header, Sider, Content } = Layout
-const { Text } = Typography
 
 interface NavItem {
   key: string
@@ -23,27 +21,6 @@ interface NavItem {
 interface BaseLayoutProps {
   navItems: NavItem[]
 }
-
-const mockNotifications = [
-  {
-    id: 1,
-    text: 'Заполни опрос за неделю 2',
-    time: '10 мин назад',
-    read: false,
-  },
-  {
-    id: 2,
-    text: 'Новая задача: Встреча с наставником',
-    time: '1 час назад',
-    read: false,
-  },
-  {
-    id: 3,
-    text: 'Этап 1 завершён — получен бейдж',
-    time: '2 часа назад',
-    read: true,
-  },
-]
 
 const BaseLayout = ({ navItems }: BaseLayoutProps) => {
   const [collapsed, setCollapsed] = useState(false)
@@ -60,61 +37,6 @@ const BaseLayout = ({ navItems }: BaseLayoutProps) => {
 
   const selectedKey =
     navItems.find((item) => location.pathname === item.path)?.key ?? ''
-
-  const unreadCount = mockNotifications.filter((n) => !n.read).length
-
-  const notificationDropdown = {
-    items: [
-      {
-        key: 'header',
-        label: (
-          <div
-            style={{ padding: '4px 0 8px', borderBottom: '1px solid #f0f0f0' }}
-          >
-            <Text strong style={{ fontSize: 16 }}>
-              Уведомления
-            </Text>
-          </div>
-        ),
-        disabled: true,
-      },
-      ...mockNotifications.map((n) => ({
-        key: String(n.id),
-        label: (
-          <div style={{ padding: '6px 0', maxWidth: 260 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              {!n.read && (
-                <div
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: '#ff6720',
-                    marginTop: 6,
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              <div style={{ paddingLeft: n.read ? 14 : 0 }}>
-                <div
-                  style={{
-                    fontSize: 15,
-                    color: '#1a1a1a',
-                    fontWeight: n.read ? 400 : 500,
-                  }}
-                >
-                  {n.text}
-                </div>
-                <div style={{ fontSize: 13, color: '#bbb', marginTop: 2 }}>
-                  {n.time}
-                </div>
-              </div>
-            </div>
-          </div>
-        ),
-      })),
-    ],
-  }
 
   const userDropdown = {
     items: [
@@ -207,7 +129,6 @@ const BaseLayout = ({ navItems }: BaseLayoutProps) => {
               <Avatar
                 size={32}
                 icon={<UserOutlined />}
-                src={user?.avatar}
                 style={{ background: '#ff6720', flexShrink: 0 }}
               />
               {!collapsed && (
@@ -222,7 +143,7 @@ const BaseLayout = ({ navItems }: BaseLayoutProps) => {
                       textOverflow: 'ellipsis',
                     }}
                   >
-                    {user?.name}
+                    {user?.full_name}
                   </div>
                   <div style={{ fontSize: 12, color: '#999' }}>
                     {user?.department}
@@ -254,19 +175,6 @@ const BaseLayout = ({ navItems }: BaseLayoutProps) => {
             zIndex: 99,
           }}
         >
-          <Dropdown
-            menu={notificationDropdown}
-            placement="bottomRight"
-            trigger={['click']}
-          >
-            <Badge count={unreadCount} size="small" color="#ff6720">
-              <Button
-                type="text"
-                icon={<BellOutlined style={{ fontSize: 24 }} />}
-                style={{ color: '#666' }}
-              />
-            </Badge>
-          </Dropdown>
         </Header>
 
         <Content

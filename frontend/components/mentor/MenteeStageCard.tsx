@@ -38,13 +38,15 @@ const statusConfig = {
 interface MenteeStageCardProps {
   stage: Stage
   onTaskClick: (task: ModalTask) => void
-  onAddTask: (stageId: number) => void
-  onDeleteTask: (stageId: number, taskId: number) => void
+  onTaskToggle?: (taskId: number, done: boolean) => void
+  onAddTask?: (stageId: number) => void
+  onDeleteTask?: (stageId: number, taskId: number) => void
 }
 
 const MenteeStageCard = ({
   stage,
   onTaskClick,
+  onTaskToggle,
   onAddTask,
   onDeleteTask,
 }: MenteeStageCardProps) => {
@@ -146,7 +148,10 @@ const MenteeStageCard = ({
                         transformOrigin: 'center',
                         flexShrink: 0,
                       }}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onTaskToggle?.(task.id, !task.done)
+                      }}
                     >
                       <Checkbox
                         checked={task.done}
@@ -211,7 +216,7 @@ const MenteeStageCard = ({
                       {task.due}
                     </Text>
 
-                    {'isCustom' in task && Boolean(task.isCustom) && (
+                    {'isCustom' in task && Boolean(task.isCustom) && onDeleteTask && (
                       <Button
                         type="text"
                         icon={<DeleteOutlined />}
@@ -226,20 +231,22 @@ const MenteeStageCard = ({
                   </div>
                 ))}
 
-                <Button
-                  type="dashed"
-                  icon={<PlusOutlined />}
-                  block
-                  style={{
-                    marginTop: 8,
-                    borderRadius: 8,
-                    color: '#ff6720',
-                    borderColor: '#ffd0b5',
-                  }}
-                  onClick={() => onAddTask(stage.id)}
-                >
-                  Добавить задачу
-                </Button>
+                {onAddTask && (
+                  <Button
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    block
+                    style={{
+                      marginTop: 8,
+                      borderRadius: 8,
+                      color: '#ff6720',
+                      borderColor: '#ffd0b5',
+                    }}
+                    onClick={() => onAddTask(stage.id)}
+                  >
+                    Добавить задачу
+                  </Button>
+                )}
               </div>
             ),
           },

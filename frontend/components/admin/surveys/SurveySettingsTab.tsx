@@ -1,14 +1,39 @@
-import { Card, Form, Select, Switch, Button, Typography, message } from 'antd'
-import { useState } from 'react'
+import { Card, Form, Select, Switch, Button, Typography, message, Spin } from 'antd'
+import { useEffect } from 'react'
+import { useSurveySettings, useUpdateSurveySettings } from '../../../api/hooks/useAdmin'
 
 const { Text } = Typography
 
 const SurveySettingsTab = () => {
   const [form] = Form.useForm()
-  const [enabled, setEnabled] = useState(true)
+  const { data: settings, isLoading } = useSurveySettings()
+  const updateMutation = useUpdateSurveySettings()
 
-  const handleSave = () => {
-    message.success('Настройки сохранены')
+  useEffect(() => {
+    if (settings) {
+      form.setFieldsValue({
+        frequency: settings.frequency,
+        day: settings.day_of_week,
+      })
+    }
+  }, [settings, form])
+
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields()
+      await updateMutation.mutateAsync({
+        enabled: settings?.enabled ?? true,
+        frequency: values.frequency ?? 'weekly',
+        day_of_week: values.day ?? 'friday',
+      })
+      message.success('Настройки сохранены')
+    } catch {
+      message.error('Ошибка при сохранении настроек')
+    }
+  }
+
+  if (isLoading) {
+    return <Spin />
   }
 
   return (
@@ -38,9 +63,15 @@ const SurveySettingsTab = () => {
             </Text>
           </div>
           <Switch
-            checked={enabled}
-            onChange={setEnabled}
-            style={{ background: enabled ? '#ff6720' : undefined }}
+            checked={settings?.enabled ?? true}
+            onChange={(newEnabled) => {
+              updateMutation.mutate({
+                enabled: newEnabled,
+                frequency: settings?.frequency ?? 'weekly',
+                day_of_week: settings?.day_of_week ?? 'friday',
+              })
+            }}
+            style={{ background: settings?.enabled ? '#ff6720' : undefined }}
           />
         </div>
 
@@ -49,7 +80,7 @@ const SurveySettingsTab = () => {
           layout="vertical"
           requiredMark={false}
           initialValues={{ day: 'friday', frequency: 'weekly' }}
-          disabled={!enabled}
+          disabled={!(settings?.enabled ?? true)}
         >
           <Form.Item name="frequency" label="Частота">
             <Select size="large">
@@ -76,15 +107,15 @@ const SurveySettingsTab = () => {
         type="primary"
         size="large"
         style={{
-          background: enabled ? '#ff6720' : '#f0f0f0',
+          background: settings?.enabled ? '#ff6720' : '#f0f0f0',
           border: 'none',
           borderRadius: 10,
           alignSelf: 'flex-start',
-          color: enabled ? '#fff' : '#bbb',
-          cursor: enabled ? 'pointer' : 'not-allowed',
+          color: settings?.enabled ? '#fff' : '#bbb',
+          cursor: settings?.enabled ? 'pointer' : 'not-allowed',
           boxShadow: 'none',
         }}
-        onClick={enabled ? handleSave : undefined}
+        onClick={settings?.enabled ? handleSave : undefined}
       >
         Сохранить
       </Button>

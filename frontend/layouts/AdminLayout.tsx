@@ -2,6 +2,8 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   FormOutlined,
+  TeamOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import BaseLayout from './BaseLayout'
 
@@ -23,6 +25,18 @@ const navItems = [
     icon: <FormOutlined />,
     label: 'Опросы',
     path: '/admin/surveys',
+  },
+  {
+    key: '/admin/directory',
+    icon: <TeamOutlined />,
+    label: 'Команда',
+    path: '/admin/directory',
+  },
+  {
+    key: '/admin/profile',
+    icon: <UserOutlined />,
+    label: 'Профиль',
+    path: '/admin/profile',
   },
 ]
 

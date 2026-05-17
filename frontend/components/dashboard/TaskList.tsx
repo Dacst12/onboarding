@@ -7,6 +7,7 @@ import {
   RightOutlined,
 } from '@ant-design/icons'
 import TaskModal, { type ModalTask } from '../ui/TaskModal'
+import { useCompleteTask, useUncompleteTask } from '../../api/hooks/useEmployee'
 
 const { Text } = Typography
 
@@ -39,6 +40,23 @@ interface TaskListProps {
 
 const TaskList = ({ tasks }: TaskListProps) => {
   const [selectedTask, setSelectedTask] = useState<ModalTask | null>(null)
+  const completeTaskMutation = useCompleteTask()
+  const uncompleteTaskMutation = useUncompleteTask()
+
+  const handleToggleTask = async () => {
+    if (!selectedTask) return
+
+    try {
+      if (selectedTask.done) {
+        await uncompleteTaskMutation.mutateAsync(selectedTask.id)
+      } else {
+        await completeTaskMutation.mutateAsync(selectedTask.id)
+      }
+      setSelectedTask((prev) => (prev ? { ...prev, done: !prev.done } : null))
+    } catch (error) {
+      console.error('Ошибка при изменении статуса задачи:', error)
+    }
+  }
 
   return (
     <>
@@ -200,14 +218,7 @@ const TaskList = ({ tasks }: TaskListProps) => {
       <TaskModal
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
-        onToggle={
-          selectedTask
-            ? () =>
-                setSelectedTask((prev) =>
-                  prev ? { ...prev, done: !prev.done } : null
-                )
-            : undefined
-        }
+        onToggle={selectedTask ? handleToggleTask : undefined}
       />
     </>
   )

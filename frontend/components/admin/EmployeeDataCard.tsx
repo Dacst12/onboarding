@@ -8,32 +8,23 @@ import {
   Modal,
   message,
   Typography,
+  Spin,
+  AutoComplete,
 } from 'antd'
 import { EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { useMentors, useDepartments } from '../../api/hooks/useAdmin'
 
 const { Text } = Typography
-
-const mockMentors = ['Пётр Иванов', 'Мария Козлова']
-const mockPlans = [
-  'Онбординг разработчика',
-  'Онбординг QA',
-  'Онбординг дизайнера',
-]
-const mockDepartments = [
-  'Разработка',
-  'Дизайн',
-  'Продукт',
-  'Инфраструктура',
-  'HR',
-]
 
 interface EmployeeData {
   email: string
   position: string
   department: string
-  mentor: string
+  mentor?: string | { id: number; full_name: string }
+  mentor_id?: number | null
   plan: string
+  plan_id?: number | null
   startDate: string
   role: 'employee' | 'mentor' | 'admin'
 }
@@ -41,6 +32,7 @@ interface EmployeeData {
 interface EmployeeDataCardProps {
   data: EmployeeData
   onSave: (values: Partial<EmployeeData>) => void
+  userId?: number
 }
 
 const EmployeeDataCard = ({ data, onSave }: EmployeeDataCardProps) => {
@@ -48,15 +40,35 @@ const EmployeeDataCard = ({ data, onSave }: EmployeeDataCardProps) => {
   const [editing, setEditing] = useState(false)
   const [form] = Form.useForm()
 
+  const { data: mentors = [], isLoading: isMentorsLoading } = useMentors()
+  const { data: departments = [], isLoading: isDepartmentsLoading } =
+    useDepartments()
+
+  const isLoading = isMentorsLoading || isDepartmentsLoading
+
   const handleSave = () => {
     const values = form.getFieldsValue()
     onSave(values)
     setEditing(false)
-    message.success('Данные сохранены')
   }
 
+  const mentorName =
+    typeof data.mentor === 'string'
+      ? data.mentor
+      : data.mentor?.full_name || 'Не назначен'
+
+  const mentorId =
+    typeof data.mentor === 'object' && data.mentor?.id ? data.mentor.id : undefined
+
   const handleCancel = () => {
-    form.setFieldsValue(data)
+    const initialValues = {
+      email: data.email,
+      position: data.position,
+      department: data.department,
+      role: data.role,
+      mentor: mentorId,
+    }
+    form.setFieldsValue(initialValues)
     setEditing(false)
   }
 
@@ -64,7 +76,7 @@ const EmployeeDataCard = ({ data, onSave }: EmployeeDataCardProps) => {
     { label: 'Email', value: data.email },
     ...(data.role === 'employee'
       ? [
-          { label: 'Наставник', value: data.mentor },
+          { label: 'Наставник', value: mentorName },
           { label: 'План адаптации', value: data.plan },
           { label: 'Дата выхода', value: data.startDate },
         ]
@@ -93,7 +105,14 @@ const EmployeeDataCard = ({ data, onSave }: EmployeeDataCardProps) => {
                 type="text"
                 style={{ color: '#ff6720' }}
                 onClick={() => {
-                  form.setFieldsValue(data)
+                  const initialValues = {
+                    email: data.email,
+                    position: data.position,
+                    department: data.department,
+                    role: data.role,
+                    mentor: mentorId,
+                  }
+                  form.setFieldsValue(initialValues)
                   setEditing(true)
                 }}
               >
@@ -171,68 +190,61 @@ const EmployeeDataCard = ({ data, onSave }: EmployeeDataCardProps) => {
           )}
         </div>
       ) : (
-        <Form form={form} layout="vertical" requiredMark={false}>
-          <Form.Item name="email" label="Email" style={{ marginBottom: 12 }}>
-            <Input size="large" style={{ borderRadius: 8 }} />
-          </Form.Item>
-          <Form.Item
-            name="position"
-            label="Должность"
-            style={{ marginBottom: 12 }}
-          >
-            <Input size="large" style={{ borderRadius: 8 }} />
-          </Form.Item>
-          <Form.Item
-            name="department"
-            label="Отдел"
-            style={{ marginBottom: 12 }}
-          >
-            <Select size="large">
-              {mockDepartments.map((d) => (
-                <Select.Option key={d} value={d}>
-                  {d}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item name="role" label="Роль" style={{ marginBottom: 12 }}>
-            <Select size="large">
-              <Select.Option value="employee">Сотрудник</Select.Option>
-              <Select.Option value="mentor">Наставник</Select.Option>
-              <Select.Option value="admin">Администратор</Select.Option>
-            </Select>
-          </Form.Item>
-          {data.role === 'employee' && (
-            <>
+        <Spin spinning={isLoading}>
+          <Form form={form} layout="vertical" requiredMark={false}>
+            <Form.Item name="email" label="Email" style={{ marginBottom: 12 }}>
+              <Input size="large" style={{ borderRadius: 8 }} />
+            </Form.Item>
+            <Form.Item
+              name="position"
+              label="Должность"
+              style={{ marginBottom: 12 }}
+            >
+              <Input size="large" style={{ borderRadius: 8 }} />
+            </Form.Item>
+            <Form.Item
+              name="department"
+              label="Отдел"
+              style={{ marginBottom: 12 }}
+            >
+              <AutoComplete
+                placeholder="Выберите или введите отдел"
+                size="large"
+                options={departments.map((d) => ({ label: d, value: d }))}
+              />
+            </Form.Item>
+            <Form.Item name="role" label="Роль" style={{ marginBottom: 12 }}>
+              <Select size="large">
+                <Select.Option value="employee">Сотрудник</Select.Option>
+                <Select.Option value="mentor">Наставник</Select.Option>
+                <Select.Option value="admin">Администратор</Select.Option>
+              </Select>
+            </Form.Item>
+            {data.role === 'employee' && (
               <Form.Item
                 name="mentor"
                 label="Наставник"
-                style={{ marginBottom: 12 }}
-              >
-                <Select size="large">
-                  {mockMentors.map((m) => (
-                    <Select.Option key={m} value={m}>
-                      {m}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-              <Form.Item
-                name="plan"
-                label="План адаптации"
                 style={{ marginBottom: 0 }}
               >
-                <Select size="large">
-                  {mockPlans.map((p) => (
-                    <Select.Option key={p} value={p}>
-                      {p}
+                <Select
+                  size="large"
+                  placeholder="Выберите наставника"
+                  optionLabelProp="label"
+                >
+                  {mentors.map((m) => (
+                    <Select.Option
+                      key={m.id}
+                      value={m.id}
+                      label={m.full_name}
+                    >
+                      {m.full_name}
                     </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
-            </>
-          )}
-        </Form>
+            )}
+          </Form>
+        </Spin>
       )}
     </Card>
   )

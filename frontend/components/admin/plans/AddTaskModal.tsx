@@ -1,4 +1,4 @@
-import { Modal, Form, Input, Select } from 'antd'
+import { Modal, Form, Input } from 'antd'
 
 interface AddTaskModalProps {
   open: boolean
@@ -6,7 +6,6 @@ interface AddTaskModalProps {
   onAdd: (values: {
     title: string
     description: string
-    type: string
     offsetDay: number
   }) => void
 }
@@ -54,13 +53,6 @@ const AddTaskModal = ({ open, onClose, onAdd }: AddTaskModalProps) => {
         </Form.Item>
         <Form.Item name="description" label="Описание">
           <Input.TextArea rows={2} style={{ borderRadius: 8 }} />
-        </Form.Item>
-        <Form.Item name="type" label="Тип задачи">
-          <Select size="large" placeholder="Выберите тип">
-            <Select.Option value="access">Выдача доступа</Select.Option>
-            <Select.Option value="training">Обучение</Select.Option>
-            <Select.Option value="meeting">Встреча</Select.Option>
-          </Select>
         </Form.Item>
         <Form.Item
           name="offsetDay"

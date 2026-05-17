@@ -17,13 +17,15 @@ async def contacts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles([UserRole.new_employee, UserRole.mentor, UserRole.admin])),
 ):
-    stmt = select(User).where(User.is_active.is_(True), User.role != UserRole.admin)
+    stmt = select(User).where(User.is_active.is_(True), User.role != UserRole.admin).order_by(User.full_name)
 
     if search:
         pattern = f"%{search}%"
         stmt = stmt.where(
             or_(
                 User.full_name.ilike(pattern),
+                User.position.ilike(pattern),
+                User.department.ilike(pattern),
                 User.responsibility_tags.ilike(pattern),
             )
         )

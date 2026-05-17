@@ -1,5 +1,5 @@
-import { Card, Avatar, Tag, Typography, Divider } from 'antd'
-import { UserOutlined } from '@ant-design/icons'
+import { Card, Avatar, Tag, Typography, Divider, Button } from 'antd'
+import { UserOutlined, EditOutlined } from '@ant-design/icons'
 import { getDepartmentColor, getInitials } from '../../utils/directory'
 
 const { Title, Text } = Typography
@@ -9,9 +9,11 @@ interface ProfileInfoProps {
   email: string
   position: string
   department: string
-  team: string
+  team?: string
   startDate: string
   mentor: string
+  isEditable?: boolean
+  onEdit?: () => void
 }
 
 const ProfileInfo = ({
@@ -22,9 +24,11 @@ const ProfileInfo = ({
   team,
   startDate,
   mentor,
+  isEditable = false,
+  onEdit,
 }: ProfileInfoProps) => (
   <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: '28px 32px' }}>
-    <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
       <Avatar
         size={80}
         icon={<UserOutlined />}
@@ -39,9 +43,19 @@ const ProfileInfo = ({
       </Avatar>
 
       <div style={{ flex: 1 }}>
-        <Title level={4} style={{ margin: '0 0 4px' }}>
-          {name}
-        </Title>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Title level={4} style={{ margin: 0 }}>
+            {name}
+          </Title>
+          {isEditable && (
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              style={{ color: '#ff6720', padding: 0 }}
+              onClick={onEdit}
+            />
+          )}
+        </div>
         <Text style={{ fontSize: 15, color: '#999', display: 'block' }}>
           {position}
         </Text>
@@ -60,18 +74,20 @@ const ProfileInfo = ({
           >
             {department}
           </Tag>
-          <Tag
-            style={{
-              background: '#fafafa',
-              border: '1px solid #f0f0f0',
-              color: '#999',
-              borderRadius: 6,
-              fontSize: 13,
-              padding: '2px 10px',
-            }}
-          >
-            {team}
-          </Tag>
+          {team && (
+            <Tag
+              style={{
+                background: '#fafafa',
+                border: '1px solid #f0f0f0',
+                color: '#999',
+                borderRadius: 6,
+                fontSize: 13,
+                padding: '2px 10px',
+              }}
+            >
+              {team}
+            </Tag>
+          )}
         </div>
       </div>
     </div>

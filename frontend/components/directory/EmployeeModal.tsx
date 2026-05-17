@@ -2,7 +2,6 @@ import { Modal, Avatar, Tag, Typography } from 'antd'
 import {
   MailOutlined,
   PhoneOutlined,
-  TeamOutlined,
   SendOutlined,
 } from '@ant-design/icons'
 import type { CSSProperties } from 'react'
@@ -39,18 +38,17 @@ const EmployeeModal = ({ employee, onClose }: EmployeeModalProps) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar
             size={44}
-            src={employee.avatar}
             style={{
-              background: getDepartmentColor(employee.department),
+              background: getDepartmentColor(employee.department || ''),
               fontSize: 17,
               fontWeight: 600,
             }}
           >
-            {!employee.avatar && getInitials(employee.name)}
+            {getInitials(employee.full_name)}
           </Avatar>
           <div>
             <Text strong style={{ fontSize: 17, display: 'block' }}>
-              {employee.name}
+              {employee.full_name}
             </Text>
             <Text style={{ fontSize: 14, color: '#999' }}>
               {employee.position}
@@ -69,46 +67,37 @@ const EmployeeModal = ({ employee, onClose }: EmployeeModalProps) => (
           paddingTop: 8,
         }}
       >
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Tag
-            style={{
-              ...getTagStyle(employee.department),
-              fontSize: 14,
-              padding: '3px 12px',
-            }}
-          >
-            {employee.department}
-          </Tag>
-          <Tag
-            style={{
-              background: '#fafafa',
-              border: '1px solid #f0f0f0',
-              color: '#666',
-              borderRadius: 6,
-              fontSize: 14,
-              padding: '3px 12px',
-            }}
-          >
-            <TeamOutlined style={{ marginRight: 4 }} />
-            {employee.team}
-          </Tag>
-        </div>
+        {employee.department && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Tag
+              style={{
+                ...getTagStyle(employee.department),
+                fontSize: 14,
+                padding: '3px 12px',
+              }}
+            >
+              {employee.department}
+            </Tag>
+          </div>
+        )}
 
-        <div>
-          <Text
-            style={{
-              fontSize: 13,
-              color: '#bbb',
-              display: 'block',
-              marginBottom: 4,
-            }}
-          >
-            Зона ответственности
-          </Text>
-          <Text style={{ fontSize: 15, color: '#555' }}>
-            {employee.responsibilities}
-          </Text>
-        </div>
+        {employee.responsibility_tags && (
+          <div>
+            <Text
+              style={{
+                fontSize: 13,
+                color: '#bbb',
+                display: 'block',
+                marginBottom: 4,
+              }}
+            >
+              Зона ответственности
+            </Text>
+            <Text style={{ fontSize: 15, color: '#555' }}>
+              {employee.responsibility_tags}
+            </Text>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Text style={{ fontSize: 13, color: '#bbb' }}>Контакты</Text>
@@ -147,20 +136,6 @@ const EmployeeModal = ({ employee, onClose }: EmployeeModalProps) => (
             >
               <SendOutlined />
               {employee.telegram}
-            </div>
-          )}
-
-          {employee.vk && (
-            <div
-              onClick={() => {
-                window.open(`https://${employee.vk}`, '_blank')
-              }}
-              style={modalLinkStyle}
-            >
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#ff6720' }}>
-                VK
-              </span>
-              {employee.vk}
             </div>
           )}
         </div>

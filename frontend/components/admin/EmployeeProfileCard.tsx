@@ -13,7 +13,6 @@ interface EmployeeProfileCardProps {
   name: string
   position: string
   department: string
-  team: string
   role: 'employee' | 'mentor' | 'admin'
 }
 
@@ -21,7 +20,6 @@ const EmployeeProfileCard = ({
   name,
   position,
   department,
-  team,
   role,
 }: EmployeeProfileCardProps) => (
   <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: '24px' }}>
@@ -70,17 +68,6 @@ const EmployeeProfileCard = ({
           }}
         >
           {department}
-        </Tag>
-        <Tag
-          style={{
-            background: '#fafafa',
-            border: '1px solid #f0f0f0',
-            color: '#999',
-            borderRadius: 6,
-            fontSize: 14,
-          }}
-        >
-          {team}
         </Tag>
         <Tag
           style={{

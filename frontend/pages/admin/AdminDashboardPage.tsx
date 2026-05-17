@@ -1,122 +1,152 @@
-import { useState } from 'react'
-import { Typography, Button } from 'antd'
+import { useMemo, useState } from 'react'
+import { useQueries } from '@tanstack/react-query'
+import { Typography, Button, message, Spin } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import EmployeeTable from '../../components/admin/EmployeeTable'
 import AddEmployeeModal from '../../components/admin/AddEmployeeModal'
-import type { Employee } from '../../components/admin/EmployeeTable'
+import { useAdminUsers, useCreateAdminUser, useTemplatePlans } from '../../api/hooks/useAdmin'
+import { getMenteeOnboardingPlan, getLastFeedback } from '../../api/admin'
+import useAuthStore from '../../store/authStore'
+import { formatDate } from '../../utils/date'
+import type { EmployeeTableRow } from '../../components/admin/EmployeeTable'
+import type { User } from '../../types/user'
+import type { CreateAdminUserPayload, PlanStageData, PlanTaskData } from '../../api/types/admin'
 
 const { Title, Text } = Typography
 
-const mockEmployees: Employee[] = [
-  {
-    id: 1,
-    name: 'Иван Петров',
-    position: 'Frontend Developer',
-    department: 'Разработка',
-    mentor: 'Пётр Иванов',
-    plan: 'Онбординг разработчика',
-    completedTasks: 8,
-    totalTasks: 12,
-    lastMood: 4,
-    startDate: '5 мая 2025',
-    role: 'employee',
-  },
-  {
-    id: 2,
-    name: 'Анна Сидорова',
-    position: 'QA Engineer',
-    department: 'Разработка',
-    mentor: 'Пётр Иванов',
-    plan: 'Онбординг QA',
-    completedTasks: 3,
-    totalTasks: 12,
-    lastMood: 2,
-    startDate: '12 мая 2025',
-    role: 'employee',
-  },
-  {
-    id: 3,
-    name: 'Дмитрий Ким',
-    position: 'Backend Developer',
-    department: 'Разработка',
-    mentor: 'Мария Козлова',
-    plan: 'Онбординг разработчика',
-    completedTasks: 11,
-    totalTasks: 12,
-    lastMood: 5,
-    startDate: '1 апреля 2025',
-    role: 'employee',
-  },
-  {
-    id: 4,
-    name: 'Светлана Орлова',
-    position: 'Designer',
-    department: 'Дизайн',
-    mentor: 'Мария Козлова',
-    plan: 'Онбординг дизайнера',
-    completedTasks: 5,
-    totalTasks: 12,
-    lastMood: 3,
-    startDate: '20 мая 2025',
-    role: 'employee',
-  },
-  {
-    id: 5,
-    name: 'Алексей Громов',
-    position: 'DevOps Engineer',
-    department: 'Инфраструктура',
-    mentor: 'Пётр Иванов',
-    plan: 'Онбординг DevOps',
-    completedTasks: 2,
-    totalTasks: 12,
-    lastMood: null,
-    startDate: '26 мая 2025',
-    role: 'employee',
-  },
-  {
-    id: 6,
-    name: 'Пётр Иванов',
-    position: 'Team Lead',
-    department: 'Разработка',
-    mentor: '—',
-    plan: '—',
-    completedTasks: 12,
-    totalTasks: 12,
-    lastMood: null,
-    startDate: '1 января 2024',
-    role: 'mentor',
-  },
-  {
-    id: 7,
-    name: 'Мария Козлова',
-    position: 'Product Manager',
-    department: 'Продукт',
-    mentor: '—',
-    plan: '—',
-    completedTasks: 12,
-    totalTasks: 12,
-    lastMood: null,
-    startDate: '1 февраля 2024',
-    role: 'mentor',
-  },
-  {
-    id: 8,
-    name: 'Анна Смирнова',
-    position: 'HR-менеджер',
-    department: 'HR',
-    mentor: '—',
-    plan: '—',
-    completedTasks: 12,
-    totalTasks: 12,
-    lastMood: null,
-    startDate: '1 марта 2024',
-    role: 'admin',
-  },
-]
-
 const AdminDashboardPage = () => {
-  const [employees, setEmployees] = useState(mockEmployees)
   const [modalOpen, setModalOpen] = useState(false)
+  const { data: users = [], isLoading: isUsersLoading } = useAdminUsers()
+  const { data: templates = [], isLoading: isTemplatesLoading } = useTemplatePlans()
+  const { user: currentUser } = useAuthStore()
+  const createUserMutation = useCreateAdminUser()
+
+  const newEmployeeUsers = useMemo(
+    () => users.filter((user) => user.role === 'new_employee' && user.id !== currentUser?.id),
+    [users, currentUser?.id]
+  )
+
+  const plansResults = useQueries({
+    queries: newEmployeeUsers.map((user) => ({
+      queryKey: ['admin', 'users', user.id, 'plan'],
+      queryFn: () => getMenteeOnboardingPlan(user.id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  })
+
+  const templatesByIdMap = useMemo(() => {
+    const map = new Map()
+    templates.forEach((template) => {
+      map.set(template.id, template.title)
+    })
+    return map
+  }, [templates])
+
+  const plansByUserId = useMemo(() => {
+    const map = new Map()
+    newEmployeeUsers.forEach((user, index) => {
+      if (plansResults[index]?.data) {
+        map.set(user.id, plansResults[index].data)
+      }
+    })
+    return map
+  }, [newEmployeeUsers, plansResults])
+
+  const feedbackResults = useQueries({
+    queries: users.map((user) => ({
+      queryKey: ['admin', 'users', user.id, 'feedback'],
+      queryFn: () => getLastFeedback(user.id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  })
+
+  const feedbackByUserId = useMemo(() => {
+    const map = new Map()
+    users.forEach((user, index) => {
+      if (feedbackResults[index]?.data?.mood) {
+        map.set(user.id, feedbackResults[index].data.mood)
+      }
+    })
+    return map
+  }, [users, feedbackResults])
+
+  // Исключаем текущего админа из списка
+  const enrichedEmployees = useMemo(() => {
+    if (!users.length) return []
+
+    return users
+      .filter((user) => user.id !== currentUser?.id)
+      .map((user) => {
+        const plan = plansByUserId.get(user.id)
+        const planName = plan?.template_id ? templatesByIdMap.get(plan.template_id) : undefined
+
+        // Подсчитываем выполненные и общее количество задач
+        let completedTasks = 0
+        let totalTasks = 0
+        if (plan?.stages) {
+          plan.stages.forEach((stage: PlanStageData) => {
+            stage.tasks?.forEach((task: PlanTaskData) => {
+              totalTasks++
+              if (task.is_completed) {
+                completedTasks++
+              }
+            })
+          })
+        }
+
+        return {
+          ...user,
+          plan: planName || '—',
+          startDate:
+            user.role === 'new_employee' && plan?.start_date
+              ? formatDate(plan.start_date)
+              : user.created_at
+                ? formatDate(user.created_at)
+                : undefined,
+          mentor: user.mentor || undefined,
+          completedTasks: user.role === 'new_employee' ? completedTasks : undefined,
+          totalTasks: user.role === 'new_employee' ? totalTasks : undefined,
+          lastMood: feedbackByUserId.get(user.id),
+        }
+      }) as EmployeeTableRow[]
+  }, [users, currentUser?.id, plansByUserId, templatesByIdMap, feedbackByUserId])
+
+  const handleAddEmployee = async (
+    employee: User & {
+      password?: string
+      template_id?: number | null
+      start_date?: string | null
+    }
+  ) => {
+    try {
+      if (!employee.password) {
+        message.error('Пароль не установлен')
+        return
+      }
+
+      const payload: CreateAdminUserPayload = {
+        email: employee.email,
+        full_name: employee.full_name,
+        password: employee.password,
+        role: employee.role as 'new_employee' | 'mentor' | 'admin',
+        position: employee.position,
+        department: employee.department,
+        mentor_id: employee.mentor_id || undefined,
+        template_id: employee.template_id || undefined,
+        start_date: employee.start_date || undefined,
+      }
+      await createUserMutation.mutateAsync(payload)
+      message.success('Сотрудник успешно добавлен')
+      setModalOpen(false)
+    } catch (error) {
+      message.error('Ошибка при добавлении сотрудника')
+      console.error(error)
+    }
+  }
+
+  if (isUsersLoading || isTemplatesLoading) {
+    return <Spin />
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -132,7 +162,7 @@ const AdminDashboardPage = () => {
             Сотрудники
           </Title>
           <Text style={{ color: '#999', fontSize: 15 }}>
-            {employees.length} человек в системе
+            {enrichedEmployees.length} человек в системе
           </Text>
         </div>
         <Button
@@ -146,12 +176,12 @@ const AdminDashboardPage = () => {
         </Button>
       </div>
 
-      <EmployeeTable employees={employees} />
+      <EmployeeTable employees={enrichedEmployees} />
 
       <AddEmployeeModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onAdd={(employee) => setEmployees((prev) => [employee, ...prev])}
+        onAdd={handleAddEmployee}
       />
     </div>
   )

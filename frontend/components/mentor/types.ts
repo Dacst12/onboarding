@@ -1,8 +1,6 @@
-export interface Mentee {
-  id: number
-  name: string
-  position: string
-  department: string
+import type { User } from '../../types/user'
+
+export interface Mentee extends User {
   startDate: string
   completedTasks: number
   totalTasks: number

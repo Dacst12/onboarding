@@ -122,10 +122,7 @@ const LoginPage = () => {
                 Email
               </Text>
             }
-            rules={[
-              { required: true, message: 'Введите email' },
-              { type: 'email', message: 'Некорректный email' },
-            ]}
+            rules={[{ required: true, message: 'Введите email' }]}
             style={{ marginBottom: 0 }}
           >
             <Input

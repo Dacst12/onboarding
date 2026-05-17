@@ -37,7 +37,10 @@ async def refresh(request: Request, response: Response):
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid or expired refresh token') from exc
 
-    access_token = create_access_token(str(payload['sub']))
+    user_id = payload['sub']
+    access_token = create_access_token(str(user_id))
+    refresh_token = create_refresh_token(str(user_id))
+    response.set_cookie('refresh_token', refresh_token, httponly=True, secure=settings.COOKIE_SECURE, samesite=settings.COOKIE_SAMESITE)
     return {'access_token': access_token, 'token_type': 'bearer'}
 
 

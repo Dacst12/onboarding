@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import ProtectedRoute from './ProtectedRoute'
+import RootLayout from '../layouts/RootLayout'
 
 import EmployeeLayout from '../layouts/EmployeeLayout'
 import MentorLayout from '../layouts/MentorLayout'
@@ -22,13 +23,16 @@ import AdminPlansPage from '../pages/admin/AdminPlansPage'
 import AdminSurveysPage from '../pages/admin/AdminSurveysPage'
 
 const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/', element: <Navigate to="/dashboard" replace /> },
+  {
+    element: <RootLayout />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/', element: <Navigate to="/dashboard" replace /> },
 
   {
     path: '/',
     element: (
-      <ProtectedRoute roles={['employee', 'mentor', 'admin']}>
+      <ProtectedRoute roles={['new_employee']}>
         <EmployeeLayout />
       </ProtectedRoute>
     ),
@@ -44,13 +48,13 @@ const router = createBrowserRouter([
   {
     path: '/mentor',
     element: (
-      <ProtectedRoute roles={['mentor', 'admin']}>
+      <ProtectedRoute roles={['mentor']}>
         <MentorLayout />
       </ProtectedRoute>
     ),
     children: [
       { index: true, element: <MentorDashboardPage /> },
-      { path: ':userId', element: <MentorEmployeePage /> },
+      { path: ':menteeId', element: <MentorEmployeePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'directory', element: <DirectoryPage /> },
     ],
@@ -68,11 +72,15 @@ const router = createBrowserRouter([
       { path: 'employees/:userId', element: <AdminEmployeePage /> },
       { path: 'plans', element: <AdminPlansPage /> },
       { path: 'surveys', element: <AdminSurveysPage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'directory', element: <DirectoryPage /> },
     ],
   },
 
-  { path: '/403', element: <div>403 — Нет доступа</div> },
-  { path: '*', element: <div>404 — Не найдено</div> },
+      { path: '/403', element: <div>403 — Нет доступа</div> },
+      { path: '*', element: <div>404 — Не найдено</div> },
+    ],
+  },
 ])
 
 export default router

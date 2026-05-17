@@ -1,136 +1,107 @@
-import { useState } from 'react'
-import { Row, Col, Button, Tabs } from 'antd'
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeftOutlined } from '@ant-design/icons'
+import { useMemo, useState } from 'react'
+import { Row, Col, Button, Tabs, message, Card, Spin } from 'antd'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons'
 import EmployeeProfileCard from '../../components/admin/EmployeeProfileCard'
 import EmployeeProgressCard from '../../components/admin/EmployeeProgressCard'
 import EmployeeDataCard from '../../components/admin/EmployeeDataCard'
 import EmployeeEmptyPlan from '../../components/admin/EmployeeEmptyPlan'
 import EmployeeTaskList from '../../components/admin/EmployeeTaskList'
 import EmployeeSurveyList from '../../components/admin/EmployeeSurveyList'
+import AddCustomTaskModal from '../../components/admin/AddCustomTaskModal'
+import { useAdminUsers, useMenteeOnboardingPlan, useUpdateAdminUser, useTemplatePlans, useUpdateTaskStatus, useAddTaskToMentee, useDeleteTaskFromMentee, useUserFeedback } from '../../api/hooks/useAdmin'
+import { formatDate } from '../../utils/date'
 import type { AdminTask } from '../../components/admin/EmployeeTaskList'
-import { Card } from 'antd'
-
-const mockEmployee = {
-  id: 1,
-  name: 'Иван Петров',
-  email: 'ivan@company.com',
-  position: 'Frontend Developer',
-  department: 'Разработка',
-  team: 'Frontend',
-  mentor: 'Пётр Иванов',
-  plan: 'Онбординг разработчика',
-  startDate: '5 мая 2025',
-  role: 'employee' as 'employee' | 'mentor' | 'admin',
-}
-
-const mockSurveys = [
-  {
-    week: 1,
-    mood: 3,
-    clarity: 'partial',
-    comment: 'Пока разбираюсь',
-    date: '9 мая 2025',
-  },
-  {
-    week: 2,
-    mood: 4,
-    clarity: 'yes',
-    comment: 'Стало понятнее, команда помогает',
-    date: '16 мая 2025',
-  },
-]
-
-const initialTasks: AdminTask[] = [
-  {
-    id: 1,
-    title: 'Встреча с наставником',
-    description:
-      'Обсудить план на первый месяц, познакомиться и задать вопросы по процессам команды',
-    stage: 'Знакомство',
-    done: true,
-    due: '1 мая · 11:00',
-    overdue: false,
-  },
-  {
-    id: 2,
-    title: 'Прочитать регламент',
-    description:
-      'Ознакомиться с внутренними правилами, политиками и процессами согласования задач',
-    stage: 'Знакомство',
-    done: true,
-    due: '3 мая · 18:00',
-    overdue: false,
-  },
-  {
-    id: 3,
-    title: 'Настроить окружение',
-    description:
-      'Установить необходимые программы, получить доступы к системам и настроить VPN',
-    stage: 'Знакомство',
-    done: true,
-    due: '5 мая · 12:00',
-    overdue: false,
-  },
-  {
-    id: 4,
-    title: 'Первый pull request',
-    description:
-      'Создать первый PR с небольшим изменением и пройти код-ревью у наставника',
-    stage: 'Погружение',
-    done: true,
-    due: '10 мая · 12:00',
-    overdue: false,
-  },
-  {
-    id: 5,
-    title: 'Провести код-ревью',
-    description:
-      'Самостоятельно провести ревью для одного из коллег по стандартам команды',
-    stage: 'Погружение',
-    done: false,
-    due: '17 мая · 15:00',
-    overdue: false,
-  },
-  {
-    id: 6,
-    title: 'Заполнить анкету безопасности',
-    description:
-      'Пройти инструктаж по информационной безопасности и заполнить анкету',
-    stage: 'Погружение',
-    done: false,
-    due: '10 мая · 18:00',
-    overdue: true,
-  },
-  {
-    id: 7,
-    title: 'Разобраться с архитектурой',
-    description:
-      'Изучить структуру проекта, основные модули и паттерны используемые в команде',
-    stage: 'Погружение',
-    done: false,
-    due: '20 мая · 18:00',
-    overdue: false,
-  },
-]
+import type { User } from '../../types/user'
 
 const AdminEmployeePage = () => {
   const navigate = useNavigate()
-  const [employee, setEmployee] = useState(mockEmployee)
-  const [tasks, setTasks] = useState(initialTasks)
+  const { userId } = useParams<{ userId: string }>()
+  const userIdNum = userId ? parseInt(userId) : 0
+  const [addTaskModalOpen, setAddTaskModalOpen] = useState(false)
 
-  const tabs = [
-    {
-      key: 'tasks',
-      label: <span style={{ fontSize: 15 }}>Задачи</span>,
-      children: <EmployeeTaskList tasks={tasks} onTasksChange={setTasks} />,
-    },
-    {
-      key: 'surveys',
-      label: <span style={{ fontSize: 15 }}>Опросы</span>,
-      children: <EmployeeSurveyList surveys={mockSurveys} />,
-    },
-  ]
+  const { data: users = [], isLoading: isEmployeeLoading } = useAdminUsers()
+  const { data: templates = [] } = useTemplatePlans()
+  const employee = useMemo(() => users.find((u) => u.id === userIdNum), [users, userIdNum])
+
+  // Загружаем план только если это новый сотрудник
+  const { data: plan, refetch: refetchPlan } = useMenteeOnboardingPlan(
+    employee?.role === 'new_employee' ? userIdNum : -1
+  )
+
+  // Загружаем опросы пользователя
+  const { data: userFeedbacks = [] } = useUserFeedback(userIdNum)
+
+  const templateNameMap = useMemo(() => {
+    const map = new Map()
+    templates.forEach((template) => {
+      map.set(template.id, template.title)
+    })
+    return map
+  }, [templates])
+
+  const updateUserMutation = useUpdateAdminUser()
+  const updateTaskStatusMutation = useUpdateTaskStatus()
+  const addTaskMutation = useAddTaskToMentee()
+
+  const deleteTaskMutation = useDeleteTaskFromMentee()
+
+  const tasks = useMemo(() => {
+    if (!plan) return []
+
+    return plan.stages.flatMap((stage) =>
+      stage.tasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        stage: stage.title,
+        done: task.is_completed,
+        due: task.due_date ? formatDate(task.due_date) : '',
+        dueDate: task.due_date,
+        overdue: false,
+        isSystemTask: task.is_system_task,
+      }))
+    ) as AdminTask[]
+  }, [plan])
+
+  const surveys = useMemo(() => {
+    if (!userFeedbacks || !Array.isArray(userFeedbacks)) return []
+    return userFeedbacks.map((feedback) => ({
+      week: feedback.week_number,
+      mood: feedback.mood,
+      clarity: feedback.tasks_clear === true ? 'yes' : feedback.tasks_clear === false ? 'no' : 'partial',
+      comment: feedback.wish || undefined,
+      date: feedback.created_at ? formatDate(feedback.created_at) : '',
+    }))
+  }, [userFeedbacks])
+
+  if (!userId || !userIdNum) {
+    navigate('/admin')
+    return null
+  }
+
+  if (isEmployeeLoading || !employee) {
+    return <Spin />
+  }
+
+  const planName = plan?.template_id ? templateNameMap.get(plan.template_id) : undefined
+
+  const displayEmployee = {
+    ...employee,
+    name: employee.full_name,
+    email: employee.email,
+    position: employee.position || '',
+    department: employee.department || '',
+    mentor: employee.mentor?.full_name || 'Не назначен',
+    mentor_id: employee.mentor_id,
+    plan: planName || '—',
+    plan_id: plan?.template_id,
+    startDate: plan?.start_date ? formatDate(plan.start_date) : formatDate(employee.created_at),
+    role: (employee.role === 'new_employee' ? 'employee' : employee.role) as
+      | 'employee'
+      | 'mentor'
+      | 'admin',
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -147,36 +118,152 @@ const AdminEmployeePage = () => {
         <Col span={8}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <EmployeeProfileCard
-              name={employee.name}
-              position={employee.position}
-              department={employee.department}
-              team={employee.team}
-              role={employee.role}
+              name={displayEmployee.name}
+              position={displayEmployee.position}
+              department={displayEmployee.department}
+              role={displayEmployee.role}
             />
 
-            {employee.role === 'employee' && (
+            {displayEmployee.role === 'employee' && (
               <EmployeeProgressCard tasks={tasks} />
             )}
 
             <EmployeeDataCard
-              data={employee}
-              onSave={(values) =>
-                setEmployee((prev) => ({ ...prev, ...values }))
-              }
+              userId={employee.id}
+              data={displayEmployee}
+              onSave={(values) => {
+                if (!employee) return
+                const updates: Partial<User> = {}
+                if ('email' in values) updates.email = values.email as string
+                if ('position' in values)
+                  updates.position = values.position as string | null
+                if ('department' in values)
+                  updates.department = values.department as string | null
+                if ('mentor' in values && values.mentor) {
+                  updates.mentor_id = typeof values.mentor === 'number' ? values.mentor : undefined
+                }
+
+                updateUserMutation.mutate(
+                  { userId: employee.id, payload: updates },
+                  {
+                    onSuccess: () => {
+                      message.success('Данные обновлены')
+                      refetchPlan()
+                    },
+                    onError: () => {
+                      message.error('Ошибка при обновлении данных')
+                    },
+                  }
+                )
+              }}
             />
           </div>
         </Col>
 
         <Col span={16}>
-          {employee.role === 'employee' ? (
-            <Card
-              style={{ borderRadius: 12 }}
-              bodyStyle={{ padding: '0 24px 24px' }}
-            >
-              <Tabs items={tabs} />
+          {displayEmployee.role === 'employee' ? (
+            <Card style={{ borderRadius: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <span style={{ fontSize: 16, fontWeight: 500 }}>План адаптации</span>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  size="small"
+                  style={{ background: '#ff6720', border: 'none' }}
+                  onClick={() => setAddTaskModalOpen(true)}
+                >
+                  Добавить задачу
+                </Button>
+              </div>
+
+              <Tabs
+                items={[
+                  {
+                    key: 'tasks',
+                    label: <span style={{ fontSize: 15 }}>Задачи</span>,
+                    children: (
+                      <EmployeeTaskList
+                        tasks={tasks}
+                        onTasksChange={(updatedTasks) => {
+                          updatedTasks.forEach((task) => {
+                            const originalTask = tasks.find((t) => t.id === task.id)
+                            if (originalTask && originalTask.done !== task.done) {
+                              updateTaskStatusMutation.mutate(
+                                {
+                                  userId: employee.id,
+                                  taskId: task.id,
+                                  isCompleted: task.done,
+                                },
+                                {
+                                  onSuccess: () => {
+                                    refetchPlan()
+                                  },
+                                }
+                              )
+                            }
+                          })
+                        }}
+                        onDeleteTask={(taskId) => {
+                          deleteTaskMutation.mutate(
+                            {
+                              userId: employee.id,
+                              taskId,
+                            },
+                            {
+                              onSuccess: () => {
+                                message.success('Задача удалена')
+                                refetchPlan()
+                              },
+                              onError: () => {
+                                message.error('Ошибка при удалении задачи')
+                              },
+                            }
+                          )
+                        }}
+                      />
+                    ),
+                  },
+                  {
+                    key: 'surveys',
+                    label: <span style={{ fontSize: 15 }}>Опросы</span>,
+                    children: <EmployeeSurveyList surveys={surveys} />,
+                  },
+                ]}
+              />
+
+              {plan && (
+                <AddCustomTaskModal
+                  open={addTaskModalOpen}
+                  onClose={() => setAddTaskModalOpen(false)}
+                  onAdd={(values) => {
+                    addTaskMutation.mutate(
+                      {
+                        userId: employee.id,
+                        stageId: values.stageId,
+                        payload: {
+                          title: values.title,
+                          description: values.description,
+                          due_date: values.dueDate,
+                        },
+                      },
+                      {
+                        onSuccess: () => {
+                          message.success('Задача добавлена')
+                          setAddTaskModalOpen(false)
+                          refetchPlan()
+                        },
+                        onError: () => {
+                          message.error('Ошибка при добавлении задачи')
+                        },
+                      }
+                    )
+                  }}
+                  stages={plan.stages}
+                />
+              )}
             </Card>
           ) : (
-            <EmployeeEmptyPlan role={employee.role as 'mentor' | 'admin'} />
+            <EmployeeEmptyPlan role={displayEmployee.role as 'mentor' | 'admin'} />
           )}
         </Col>
       </Row>

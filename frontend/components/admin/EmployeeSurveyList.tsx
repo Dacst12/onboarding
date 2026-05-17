@@ -28,9 +28,18 @@ interface EmployeeSurveyListProps {
   surveys: Survey[]
 }
 
-const EmployeeSurveyList = ({ surveys }: EmployeeSurveyListProps) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-    {surveys.map((survey) => (
+const EmployeeSurveyList = ({ surveys }: EmployeeSurveyListProps) => {
+  if (!surveys || surveys.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px 20px', color: '#999' }}>
+        <Text>Опросов ещё нет</Text>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {surveys.map((survey) => (
       <Card
         key={survey.week}
         style={{ borderRadius: 10 }}
@@ -107,7 +116,8 @@ const EmployeeSurveyList = ({ surveys }: EmployeeSurveyListProps) => (
         )}
       </Card>
     ))}
-  </div>
-)
+    </div>
+  )
+}
 
 export default EmployeeSurveyList

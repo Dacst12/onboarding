@@ -2,19 +2,19 @@ import { useState } from 'react'
 import { Card, Form, Input, Button, Typography, message } from 'antd'
 import {
   PhoneOutlined,
-  MailOutlined,
   EditOutlined,
   SaveOutlined,
   CloseOutlined,
   SendOutlined,
 } from '@ant-design/icons'
+import useAuthStore from '../../store/authStore'
+import api from '../../api/axios'
 
 const { Text } = Typography
 
 interface ContactForm {
   phone?: string
   telegram?: string
-  vk?: string
 }
 
 interface ProfileContactsProps {
@@ -22,15 +22,29 @@ interface ProfileContactsProps {
 }
 
 const ProfileContacts = ({ initial }: ProfileContactsProps) => {
+  const { setAuth, token } = useAuthStore()
   const [editing, setEditing] = useState(false)
   const [contacts, setContacts] = useState<ContactForm>(initial)
+  const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const values = form.getFieldsValue()
-    setContacts(values)
-    setEditing(false)
-    message.success('Контактные данные сохранены')
+    setLoading(true)
+    try {
+      const response = await api.patch('/me', values)
+
+      if (token) {
+        setAuth(response.data, token)
+      }
+      setContacts(values)
+      setEditing(false)
+      message.success('Контактные данные сохранены')
+    } catch {
+      message.error('Ошибка при сохранении контактных данных')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCancel = () => {
@@ -38,14 +52,9 @@ const ProfileContacts = ({ initial }: ProfileContactsProps) => {
     setEditing(false)
   }
 
-  const contactItems = [
+  const contactItems: Array<{ icon: React.ReactNode; label: string; value: string | undefined }> = [
     { icon: <PhoneOutlined />, label: 'Телефон', value: contacts.phone },
     { icon: <SendOutlined />, label: 'Telegram', value: contacts.telegram },
-    {
-      icon: <span style={{ fontSize: 14, fontWeight: 700 }}>VK</span>,
-      label: 'ВКонтакте',
-      value: contacts.vk,
-    },
   ]
 
   return (
@@ -82,6 +91,7 @@ const ProfileContacts = ({ initial }: ProfileContactsProps) => {
                 type="text"
                 style={{ color: '#bbb' }}
                 onClick={handleCancel}
+                disabled={loading}
               >
                 Отмена
               </Button>
@@ -90,6 +100,7 @@ const ProfileContacts = ({ initial }: ProfileContactsProps) => {
                 type="text"
                 style={{ color: '#ff6720' }}
                 onClick={handleSave}
+                loading={loading}
               >
                 Сохранить
               </Button>
@@ -153,22 +164,11 @@ const ProfileContacts = ({ initial }: ProfileContactsProps) => {
           <Form.Item
             name="telegram"
             label={<Text style={{ fontSize: 14 }}>Telegram</Text>}
+            style={{ marginBottom: 0 }}
           >
             <Input
               prefix={<span style={{ color: '#ff6720' }}>@</span>}
               placeholder="username"
-              size="large"
-              style={{ borderRadius: 10 }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="vk"
-            label={<Text style={{ fontSize: 14 }}>ВКонтакте</Text>}
-            style={{ marginBottom: 0 }}
-          >
-            <Input
-              prefix={<MailOutlined style={{ color: '#ff6720' }} />}
-              placeholder="vk.com/username"
               size="large"
               style={{ borderRadius: 10 }}
             />

@@ -9,14 +9,36 @@ from sqlalchemy.orm import selectinload
 
 from app.core.constants import UserRole
 from app.db.session import get_db
-from app.dependencies.auth import require_role
+from app.dependencies.auth import require_role, get_current_user
 from app.models.feedback import Feedback
 from app.models.onboarding_plan import OnboardingPlan, PlanStage, Task
 from app.models.user import User
 from app.schemas.feedback import FeedbackCreate, FeedbackRead
 from app.schemas.plan import PlanRead, TaskCompleteResponse
+from app.schemas.user import UserRead, UserUpdate
 
 router = APIRouter(prefix='/me', tags=['me'])
+
+
+@router.get('', response_model=UserRead)
+async def me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(User)
+        .where(User.id == current_user.id)
+        .options(selectinload(User.mentor))
+    )
+    user = result.scalar_one()
+    return user
+
+
+@router.patch('', response_model=UserRead)
+async def update_me(payload: UserUpdate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field != 'password':
+            setattr(current_user, field, value)
+    await db.commit()
+    await db.refresh(current_user, ['mentor'])
+    return current_user
 
 
 @router.get('/plan', response_model=PlanRead)
@@ -76,3 +98,15 @@ async def create_feedback(payload: FeedbackCreate, current_user: User = Depends(
 async def feedback_available(current_user: User = Depends(require_role(UserRole.new_employee)), db: AsyncSession = Depends(get_db)):
     exists = await db.execute(select(Feedback.id).where(Feedback.user_id == current_user.id).limit(1))
     return {'available': exists.scalar_one_or_none() is None}
+
+
+@router.get('/feedback/last')
+async def last_feedback(current_user: User = Depends(require_role(UserRole.new_employee)), db: AsyncSession = Depends(get_db)):
+    feedback = await db.execute(
+        select(Feedback)
+        .where(Feedback.user_id == current_user.id)
+        .order_by(Feedback.week_number.desc())
+        .limit(1)
+    )
+    last = feedback.scalar_one_or_none()
+    return {'mood': last.mood if last else None, 'week_number': last.week_number if last else None}

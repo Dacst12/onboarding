@@ -35,17 +35,17 @@ const MenteeCard = ({ mentee, onClick }: MenteeCardProps) => {
           <Avatar
             size={56}
             style={{
-              background: getDepartmentColor(mentee.department),
+              background: getDepartmentColor(mentee.department ?? ''),
               fontSize: 20,
               fontWeight: 600,
               flexShrink: 0,
             }}
           >
-            {getInitials(mentee.name)}
+            {getInitials(mentee.full_name)}
           </Avatar>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Text strong style={{ fontSize: 17, display: 'block' }}>
-              {mentee.name}
+              {mentee.full_name}
             </Text>
             <Text
               style={{

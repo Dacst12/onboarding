@@ -1,5 +1,5 @@
 import { Card, Avatar, Tag, Typography } from 'antd'
-import { MailOutlined, PhoneOutlined, TeamOutlined } from '@ant-design/icons'
+import { MailOutlined, PhoneOutlined } from '@ant-design/icons'
 import type { CSSProperties } from 'react'
 import type { Employee } from '../../types/user'
 import {
@@ -63,15 +63,14 @@ const EmployeeCard = ({ employee, onClick }: EmployeeCardProps) => (
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <Avatar
           size={52}
-          src={employee.avatar}
           style={{
-            background: getDepartmentColor(employee.department),
+            background: getDepartmentColor(employee.department || ''),
             fontSize: 18,
             fontWeight: 600,
             flexShrink: 0,
           }}
         >
-          {!employee.avatar && getInitials(employee.name)}
+          {getInitials(employee.full_name)}
         </Avatar>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -79,7 +78,7 @@ const EmployeeCard = ({ employee, onClick }: EmployeeCardProps) => (
             strong
             style={{ fontSize: 16, display: 'block', lineHeight: 1.3 }}
           >
-            {employee.name}
+            {employee.full_name}
           </Text>
           <Text
             style={{
@@ -93,49 +92,30 @@ const EmployeeCard = ({ employee, onClick }: EmployeeCardProps) => (
           </Text>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            gap: 6,
-            flexShrink: 0,
-          }}
-        >
+        {employee.department && (
           <Tag style={getTagStyle(employee.department)}>
             {employee.department}
           </Tag>
-          <Tag
-            style={{
-              background: '#fafafa',
-              border: '1px solid #f0f0f0',
-              color: '#999',
-              borderRadius: 6,
-              fontSize: 12,
-              margin: 0,
-            }}
-          >
-            <TeamOutlined style={{ marginRight: 3 }} />
-            {employee.team}
-          </Tag>
-        </div>
+        )}
       </div>
 
-      <Text
-        style={
-          {
-            fontSize: 13,
-            color: '#bbb',
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            lineHeight: 1.5,
-          } as CSSProperties
-        }
-      >
-        {employee.responsibilities}
-      </Text>
+      {employee.responsibility_tags && (
+        <Text
+          style={
+            {
+              fontSize: 13,
+              color: '#bbb',
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              lineHeight: 1.5,
+            } as CSSProperties
+          }
+        >
+          {employee.responsibility_tags}
+        </Text>
+      )}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <div
