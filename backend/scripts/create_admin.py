@@ -5,11 +5,16 @@ from sqlalchemy import select
 
 from app.core.constants import UserRole
 from app.core.security import hash_password
-from app.db.session import AsyncSessionLocal
+from app.db.base import Base
+from app.db.session import AsyncSessionLocal, engine
+from app.models import *  # noqa: F401, F403
 from app.models.user import User
 
 
 async def create_admin(email: str, password: str, full_name: str) -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User).where(User.email == email))
         if result.scalar_one_or_none() is not None:
