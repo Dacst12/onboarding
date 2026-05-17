@@ -2,7 +2,6 @@ import {
   DashboardOutlined,
   FileTextOutlined,
   FormOutlined,
-  SettingOutlined,
 } from '@ant-design/icons'
 import BaseLayout from './BaseLayout'
 
@@ -24,12 +23,6 @@ const navItems = [
     icon: <FormOutlined />,
     label: 'Опросы',
     path: '/admin/surveys',
-  },
-  {
-    key: '/admin/settings',
-    icon: <SettingOutlined />,
-    label: 'Настройки',
-    path: '/admin/settings',
   },
 ]
 
