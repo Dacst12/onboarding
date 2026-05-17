@@ -17,7 +17,7 @@ import MentorDashboardPage from '../pages/mentor/MentorDashboardPage'
 import MentorEmployeePage from '../pages/mentor/MentorEmployeePage'
 
 import AdminDashboardPage from '../pages/admin/AdminDashboardPage'
-import AdminEmployeesPage from '../pages/admin/AdminEmployeesPage'
+import AdminEmployeePage from '../pages/admin/AdminEmployeePage'
 import AdminPlansPage from '../pages/admin/AdminPlansPage'
 import AdminSurveysPage from '../pages/admin/AdminSurveysPage'
 import AdminSettingsPage from '../pages/admin/AdminSettingsPage'
@@ -66,7 +66,7 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <AdminDashboardPage /> },
-      { path: 'employees', element: <AdminEmployeesPage /> },
+      { path: 'employees/:userId', element: <AdminEmployeePage /> },
       { path: 'plans', element: <AdminPlansPage /> },
       { path: 'surveys', element: <AdminSurveysPage /> },
       { path: 'settings', element: <AdminSettingsPage /> },

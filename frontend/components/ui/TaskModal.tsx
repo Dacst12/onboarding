@@ -1,5 +1,9 @@
-import { Modal, Checkbox, Tag, Typography } from 'antd'
-import { CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons'
+import { Modal, Checkbox, Tag, Typography, Button } from 'antd'
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  EditOutlined,
+} from '@ant-design/icons'
 
 const { Text } = Typography
 
@@ -18,6 +22,7 @@ interface TaskModalProps {
   task: ModalTask | null
   onClose: () => void
   onToggle?: () => void
+  onEdit?: () => void
   disabled?: boolean
   disabledText?: string
 }
@@ -26,6 +31,7 @@ const TaskModal = ({
   task,
   onClose,
   onToggle,
+  onEdit,
   disabled,
   disabledText,
 }: TaskModalProps) => (
@@ -43,6 +49,7 @@ const TaskModal = ({
           ) : (
             <ClockCircleOutlined style={{ color: '#ff6720', fontSize: 18 }} />
           )}
+
           <Text strong style={{ fontSize: 16 }}>
             {task.title}
           </Text>
@@ -150,6 +157,17 @@ const TaskModal = ({
               {task.done ? 'Задача выполнена' : 'Отметить как выполненную'}
             </Text>
           </div>
+        )}
+
+        {onEdit && (
+          <Button
+            block
+            icon={<EditOutlined />}
+            style={{ borderRadius: 8, marginTop: 4 }}
+            onClick={onEdit}
+          >
+            Редактировать задачу
+          </Button>
         )}
 
         {disabled && disabledText && (
